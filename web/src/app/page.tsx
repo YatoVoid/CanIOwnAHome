@@ -2,9 +2,9 @@ import { HomeChat } from "@/components/home-chat";
 import { SearchForm } from "@/components/search-form";
 
 const STEPS = [
-  ["Tell us two numbers", "Your zip code and what you pay in rent today."],
-  ["We find the homes", "A pricing model picks listings near you that would cost about the same per month to own."],
-  ["Walk through each one", "Photos, a plain description, and the full monthly cost next to your rent."],
+  ["Tell us your monthly budget", "What you pay in rent today, or the most you would spend. Add a zip code, or leave it blank to search all of Houston."],
+  ["We find the homes", "Homes whose full monthly cost (loan, tax and insurance) fits your budget, checked against a fair-price model and each area's flood-claim history."],
+  ["Walk through each one", "Photos, a plain description, the full monthly cost next to your budget, and whether it is cheap or cheap for a reason."],
 ];
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <section className="grid gap-12 py-16 sm:py-24 lg:grid-cols-[1.5fr_1fr] lg:items-end">
         <div>
-          <p className="eyebrow">Houston rent-to-own check</p>
+          <p className="eyebrow">Houston home affordability check</p>
           <h1 className="display mt-4 max-w-3xl text-5xl sm:text-7xl">Your rent might already cover a mortgage.</h1>
           <div className="mt-12">
             <SearchForm />

@@ -7,6 +7,7 @@ import { CostBreakdown } from "@/components/cost-breakdown";
 import { Gallery } from "@/components/gallery";
 import { HomeDescription, HomeNav, ModelVerdict, PriceCheck } from "@/components/home-model";
 import { OfferAdvice } from "@/components/offer-advice";
+import { OursCheck } from "@/components/ours-badge";
 import { Section } from "@/components/section";
 import { cachedListing } from "@/lib/data";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
@@ -82,7 +83,7 @@ async function HomeDetail({
             {rent != null && (
               <div>
                 <p className="text-xs uppercase tracking-wider text-white/70">
-                  {search ? "Your rent" : "Typical rent here"}
+                  {search ? "Your budget" : "Typical rent here"}
                 </p>
                 <p className="figure text-3xl text-white">{money(rent)}</p>
               </div>
@@ -121,8 +122,14 @@ async function HomeDetail({
               price={home.price}
               hoaMonthly={home.hoaMonthly}
               rent={rent}
-              rentLabel={search ? "Your rent" : "Typical rent"}
+              rentLabel={search ? "Your budget" : "Typical rent"}
             />
+          </Section>
+        )}
+
+        {home.ours && (
+          <Section eyebrow="Fair price and flooding" title="Is it cheap, or cheap for a reason?">
+            <OursCheck ours={home.ours} price={home.price} />
           </Section>
         )}
 

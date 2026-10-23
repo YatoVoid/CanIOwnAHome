@@ -12,11 +12,11 @@ const STORAGE_KEY = "ciooh.chat.v1";
 const MAX_CHARS = 800;
 
 const GREETING =
-  "Tell me who's moving in, the zip code you want, and what you pay in rent now. Add anything the home needs, like a yard or an extra bedroom. I'm an automated assistant running on Google Gemini, so check anything important.";
+  "Tell me who's moving in and your monthly budget (your rent now, or the most you'd spend). A zip code is optional: skip it and I'll search all of Houston. Add anything the home needs, like a yard or an extra bedroom. I'm an automated assistant running on Google Gemini, so check anything important.";
 
 const EXAMPLES = [
   "We're a couple with 3 kids in 77044, paying $2,100 rent. We'd love a yard.",
-  "Just me and my dog. I pay $1,500 in 77084 and don't want a condo.",
+  "Just me and my dog. I can spend $1,500 a month anywhere in Houston and don't want a condo.",
 ];
 
 type Saved = { messages: ChatMessage[]; result: ChatResult | null };
@@ -94,8 +94,7 @@ export function HomeChat() {
   const known = result?.known;
   const extras = known ? describeFilters({ ...known.filters, minBeds: undefined }) : [];
   const checklist = [
-    { label: "Zip code", value: known?.zip ?? null },
-    { label: "Current rent", value: known?.rent != null ? `${money(known.rent)}/mo` : null },
+    { label: "Monthly budget", value: known?.rent != null ? `${money(known.rent)}/mo` : null },
     {
       label: "Who's moving in",
       value:
@@ -174,7 +173,7 @@ export function HomeChat() {
               }}
               rows={2}
               maxLength={MAX_CHARS}
-              placeholder="We're a family of four, paying $1,900 in 77044..."
+              placeholder="We're a family of four with $1,900 a month to spend..."
               className="field max-h-40 min-h-[3rem] flex-1 resize-y"
             />
             <button
@@ -210,6 +209,9 @@ export function HomeChat() {
             </li>
           ))}
         </ul>
+        <p className="mt-4 text-sm text-ink-2">
+          Where: <span className="font-medium text-ink">{known?.zip ? `Zip ${known.zip}` : "All of Houston"}</span>
+        </p>
         {extras.length > 0 && (
           <div className="mt-5">
             <p className="text-sm text-ink-2">Also looking for</p>
@@ -232,7 +234,7 @@ export function HomeChat() {
               Show matching homes <ArrowRight className="nudge-arrow size-4 transition-transform" aria-hidden />
             </Link>
           ) : (
-            <p className="text-sm text-ink-3">The search button shows up once these three are filled in.</p>
+            <p className="text-sm text-ink-3">The search button shows up once your budget and household are filled in.</p>
           )}
           {messages.length > 0 && (
             <button

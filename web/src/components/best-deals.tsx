@@ -38,11 +38,13 @@ export function BestDeals({ search }: { search: Search }) {
     <section className="border-t border-line py-12" aria-labelledby="deals-heading">
       <p className="eyebrow">Deal score</p>
       <h2 id="deals-heading" className="display mt-2 text-3xl sm:text-4xl">
-        Best deals in {search.zip}, at any price
+        {search.zip ? `Best deals in ${search.zip}, at any price` : "Best deals across Houston, at any price"}
       </h2>
       <p className="mt-3 max-w-2xl text-ink-2">
-        The model ranks every home in this zip by how good a deal it is. {weights} Some of these cost more than your rent;
-        the monthly figure on each card shows by how much.
+        {search.zip
+          ? `The model ranks every home in this zip by how good a deal it is. ${weights ?? ""} `
+          : "Homes priced furthest below our fair-price estimate, where all three of our models agree. "}
+        Some of these cost more than your budget; the monthly figure on each card shows by how much.
       </p>
       <div className="mt-8">
         <HomeGrid homes={homes} query={query} zip={search.zip} rent={search.rent} />

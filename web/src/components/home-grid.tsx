@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAssumptions } from "@/components/assumptions";
 import { FitBadge } from "@/components/fit-badge";
+import { OursChips } from "@/components/ours-badge";
 import { DealBadge, TierBadge } from "@/components/tier-badge";
 import { costBreakdown } from "@/lib/finance";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
@@ -18,7 +19,7 @@ export function HomeGrid({
 }: {
   homes: Listing[];
   query: string;
-  zip: string;
+  zip?: string;
   rent: number;
   startAt?: number;
 }) {
@@ -64,6 +65,7 @@ export function HomeGrid({
             <div className="mt-1.5">
               <FitBadge monthly={monthly} rent={rent} />
             </div>
+            <OursChips ours={home.ours} />
             <p className="mt-2 font-medium group-hover:underline group-hover:underline-offset-4">
               {home.address.street}
             </p>

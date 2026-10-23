@@ -25,13 +25,15 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
         <span className="text-accent-ink">{money(rent)}</span> a month
       </>
     ) : (
-      <>No homes matched {money(rent)} a month here yet</>
+      <>
+        No homes matched {money(rent)} a month {zip ? "here" : "in Houston"} yet
+      </>
     );
 
   return (
     <>
       <section className="border-b border-line py-10">
-        <p className="eyebrow">Zip {zip}</p>
+        <p className="eyebrow">{zip ? `Zip ${zip}` : "All of Houston"}</p>
         <h1 className="display mt-3 text-4xl sm:text-5xl" aria-live="polite">
           {heading}
         </h1>
@@ -72,8 +74,10 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
         ) : (
           <p className="max-w-xl py-10 text-ink-2">
             {hasFilters
-              ? "Nothing nearby matched every requirement. Remove one of the filters above, or try a slightly higher monthly amount."
-              : "Try a slightly higher monthly amount or a nearby zip code. Coverage is limited to the Houston area for now."}
+              ? "Nothing matched every requirement. Remove one of the filters above, or try a slightly higher monthly budget."
+              : zip
+                ? "Try a slightly higher monthly budget, a nearby zip code, or leave the zip blank to search all of Houston."
+                : "Try a slightly higher monthly budget. Coverage is limited to the Houston area for now."}
           </p>
         ))}
 
@@ -81,7 +85,14 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
         <BestDeals search={search} />
       )}
 
-      {state.status === "done" && state.data.upstream === null && (
+      {state.status === "done" && !zip && (
+        <p className="text-sm text-ink-3">
+          Houston-wide results are ranked with our fair-price model: homes whose full monthly cost fits your budget, best
+          value first, at most three per zip code so one neighborhood does not crowd out the rest. Add a zip code to search one area.
+        </p>
+      )}
+
+      {state.status === "done" && zip && state.data.upstream === null && (
         <p className="text-sm text-ink-3">
           Results come from the demo model (affordability filter over listing data). The trained model is not connected.
         </p>

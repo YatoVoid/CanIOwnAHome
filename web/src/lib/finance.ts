@@ -12,7 +12,7 @@ export type Assumptions = {
 // and Gulf Coast homeowners insurance is well above the national average.
 export const DEFAULT_ASSUMPTIONS: Assumptions = {
   downPaymentPct: 5,
-  ratePct: 6.25,
+  ratePct: 7.32, // Freddie Mac weekly survey, 30-yr fixed, 22 Oct 2026. Update weekly.
   termYears: 30,
   taxRatePct: 2.1,
   insuranceRatePct: 0.9,

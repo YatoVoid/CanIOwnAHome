@@ -12,7 +12,7 @@ export function CostBreakdown({
   price,
   hoaMonthly,
   rent,
-  rentLabel = "Your rent",
+  rentLabel = "Your budget",
 }: {
   price: number;
   hoaMonthly: number | null;
@@ -75,7 +75,7 @@ export function CostBreakdown({
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <figure className="rounded-xl border border-line bg-card p-5 sm:p-6">
           <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-semibold">Owning vs. renting, per month</span>
+            <span className="font-semibold">Owning vs. your monthly budget</span>
             <FitBadge monthly={c.total} rent={rent} />
           </figcaption>
 
@@ -183,7 +183,7 @@ export function CostBreakdown({
               </div>
               <div>
                 <p className="figure text-3xl">{money(rentPaid)}</p>
-                <p className="text-sm text-ink-2">paid in rent, at today&apos;s rent</p>
+                <p className="text-sm text-ink-2">spent over {years} years at {rentLabel.toLowerCase()}</p>
               </div>
             </div>
             <p className="mt-3 text-xs text-ink-3">

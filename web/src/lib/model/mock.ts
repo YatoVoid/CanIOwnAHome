@@ -2,6 +2,7 @@ import { costBreakdown, DEFAULT_ASSUMPTIONS, NEAR_RENT_FACTOR } from "@/lib/fina
 import { money } from "@/lib/format";
 import { matchesFilters, type Listing, type Search } from "@/lib/listing";
 import { nearestZips, rowsInZip, rowToListing, type Row } from "@/lib/listings-store";
+import { anywhereRecommend } from "./anywhere";
 
 const MAX_RESULTS = 24;
 const MIN_IN_ZIP = 8;
@@ -18,6 +19,7 @@ function monthly(r: Row) {
  * to neighboring zips when the requested zip has too few matches.
  */
 export function mockRecommend({ zip, rent, filters }: Search): Listing[] {
+  if (!zip) return anywhereRecommend({ rent, filters });
   const ceiling = rent * NEAR_RENT_FACTOR;
   const fits = (r: Row) =>
     monthly(r) <= ceiling &&

@@ -20,9 +20,9 @@ export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero", ke
         <input key={name} type="hidden" name={name} value={value} />
       ))}
       <p className={hero ? "display text-3xl leading-snug sm:text-5xl sm:leading-snug" : "flex flex-wrap items-center gap-2"}>
-        <span>I live in </span>
+        <span>{hero ? "I want a home in " : "Where: "}</span>
         <label className="sr-only" htmlFor={`zip-${size}`}>
-          Zip code
+          Zip code (optional, leave blank for all of Houston)
         </label>
         <input
           id={`zip-${size}`}
@@ -32,17 +32,16 @@ export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero", ke
           autoComplete="postal-code"
           pattern="\d{5}"
           maxLength={5}
-          required
-          placeholder="77007"
+          placeholder="anywhere"
           aria-invalid={Boolean(errors.zip)}
           aria-describedby={errors.zip ? `zip-${size}-error` : undefined}
-          className={hero ? `${input} mx-1 w-[3.6em]` : input}
+          className={hero ? `${input} mx-1 w-[5.4em]` : input}
         />
-        <span> and pay </span>
+        <span>{hero ? " and can spend " : " · Budget: "}</span>
         <span className={hero ? "whitespace-nowrap" : "inline-flex items-center gap-1"}>
           <span aria-hidden>$</span>
           <label className="sr-only" htmlFor={`rent-${size}`}>
-            Monthly rent in dollars
+            Monthly housing budget in dollars
           </label>
           <input
             id={`rent-${size}`}
@@ -56,13 +55,19 @@ export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero", ke
             className={hero ? `${input} mx-1 w-[3.6em]` : input}
           />
         </span>
-        <span> {hero ? "a month in rent." : "a month."}</span>
+        <span> {hero ? "a month." : "a month"}</span>
         {!hero && (
           <button type="submit" className="rounded-md bg-navy px-3 py-1.5 text-sm font-semibold text-on-navy">
             Update
           </button>
         )}
       </p>
+      {hero && (
+        <p className="mt-4 max-w-xl text-base text-ink-2">
+          Leave the zip code blank to search all of Houston. Your budget can be your rent today, or the most you would
+          comfortably spend each month on a home.
+        </p>
+      )}
       <div aria-live="polite" className="mt-2 space-y-1 text-sm text-over">
         {errors.zip && <p id={`zip-${size}-error`}>{errors.zip}</p>}
         {errors.rent && <p id={`rent-${size}-error`}>{errors.rent}</p>}

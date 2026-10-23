@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Listing } from "@/lib/listing";
+import { oursFor } from "@/lib/ours";
 
 // Compact rows written by scripts/build-listings.py.
 export type Row = {
@@ -46,6 +47,11 @@ export function rowsInZip(zip: string): Row[] {
   return rows;
 }
 
+/** Every listing in every zip (loads all zip files once, then serves from memory). */
+export function allRows(): Row[] {
+  return Object.keys(loadMeta().zips).flatMap((z) => rowsInZip(z));
+}
+
 export function rowById(id: string): Row | null {
   const zip = loadMeta().ids[id];
   return zip ? (rowsInZip(zip).find((r) => r.id === id) ?? null) : null;
@@ -79,6 +85,7 @@ export function rowToListing(r: Row): Listing {
     hoaMonthly: null,
     estimates: { value: r.ze, rent: r.rz, taxAssessed: r.tx },
     model: null,
+    ours: oursFor(r.id, r.z),
     daysOnMarket: r.dom,
     broker: r.br,
     sourceUrl: r.u?.startsWith("https://") ? r.u : null,

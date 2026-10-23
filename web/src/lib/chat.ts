@@ -18,13 +18,13 @@ export const ChatHistorySchema = z
 
 export type ChatMessage = z.infer<typeof ChatHistorySchema>[number];
 
-const SYSTEM_PROMPT = `You help renters in the Houston, Texas area describe the home they need, so a search tool can find homes for sale that cost about the same per month as their rent.
+const SYSTEM_PROMPT = `You help people in the Houston, Texas area describe the home they need, so a search tool can find homes for sale whose full monthly cost fits their monthly budget (often what they pay in rent now).
 
-Read the whole conversation and fill in the JSON fields from what the user has said so far. Only use what the user actually said. Never guess a zip code or a rent amount.
+Read the whole conversation and fill in the JSON fields from what the user has said so far. Only use what the user actually said. Never guess a zip code or a budget amount.
 
 Fields:
-- zip: the 5-digit zip code they want to live in. If they name a Houston neighborhood instead, ask for the zip code.
-- monthlyRent: what they pay in rent now, whole dollars, or the monthly budget they name.
+- zip: the 5-digit zip code they want to live in. Leave null if they have not named one or say anywhere or no preference: the search then covers all of Houston. If they name a Houston neighborhood instead of a zip, ask for the zip code or whether anywhere in Houston is fine.
+- monthlyRent: the monthly budget: what they pay in rent now, or the most they would spend a month, whole dollars.
 - householdSize: how many people will live in the home.
 - minBeds: bedrooms needed. If they give a household but no bedroom count, assume two adults in a couple share a room and each other person gets their own room unless they say otherwise (a couple with 3 kids needs 4). If they say some people share rooms, count the rooms they describe. Never below 1.
 - minBaths: only if they ask for a bathroom count.
@@ -33,7 +33,7 @@ Fields:
 - homeTypes: only if they say what kind of home. Allowed values: ${HOME_TYPES.join(", ")}. A "house" means SINGLE_FAMILY. "No condos" means every allowed value except CONDO.
 - Use null (or an empty list for homeTypes) for anything not known.
 
-Required before a search can run: zip, monthlyRent, and either householdSize or minBeds.
+Required before a search can run: monthlyRent, and either householdSize or minBeds. The zip is optional. If they gave no zip, say you will search all of Houston and that they can add a zip to narrow it.
 
 The reply field is what you say back to the user:
 - If something required is missing, ask for it. Ask for at most two things per message, in plain words.
@@ -76,7 +76,7 @@ export type Extraction = z.infer<typeof ExtractionSchema>;
 
 export type ChatResult = {
   reply: string;
-  /** Set once zip, rent and a bedroom need are all known and valid. */
+  /** Set once the budget and a bedroom need are known and valid. The zip is optional (none = all of Houston). */
   search: Search | null;
   known: { zip: string | null; rent: number | null; householdSize: number | null; filters: Filters };
 };
@@ -105,11 +105,11 @@ export function toChatResult(x: Extraction): ChatResult {
 
   const zip = pick(SearchSchema.shape.zip, x.zip) ?? null;
   const rent = pick(SearchSchema.shape.rent, x.monthlyRent != null ? Math.round(x.monthlyRent) : null) ?? null;
-  const ready = zip !== null && rent !== null && filters.minBeds !== undefined;
+  const ready = rent !== null && filters.minBeds !== undefined;
 
   return {
     reply: x.reply.trim(),
-    search: ready ? { zip, rent, filters } : null,
+    search: ready ? { ...(zip ? { zip } : {}), rent, filters } : null,
     known: { zip, rent, householdSize: x.householdSize, filters },
   };
 }

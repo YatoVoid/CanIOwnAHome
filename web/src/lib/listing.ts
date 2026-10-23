@@ -42,9 +42,20 @@ export const ListingSchema = z.object({
   daysOnMarket: z.number().int().nonnegative().nullable(),
   broker: z.string().max(200).nullable(),
   sourceUrl: httpsUrl.nullable(),
+  // Fair price, deal label and ZIP flood level from the notebook's models (see lib/ours.ts).
+  ours: z
+    .object({
+      fairPrice: money,
+      gapPct: z.number(), // positive = asking price is this many % below fair price
+      label: z.enum(["bargain", "fair", "overpriced", "flood_trap"]),
+      floodScore: z.number().min(0).max(1).nullable(),
+      floodLevel: z.enum(["Low", "Medium", "High"]).nullable(),
+    })
+    .nullish(),
 });
 
 export type Listing = z.infer<typeof ListingSchema>;
+export type Ours = NonNullable<Listing["ours"]>;
 
 export const HOME_TYPES = ["SINGLE_FAMILY", "TOWNHOUSE", "CONDO", "MULTI_FAMILY", "MANUFACTURED"] as const;
 export type HomeType = (typeof HOME_TYPES)[number];
@@ -60,12 +71,14 @@ export const FiltersSchema = z.object({
 export type Filters = z.infer<typeof FiltersSchema>;
 
 export const SearchSchema = z.object({
-  zip: z.string().trim().regex(/^\d{5}$/, "Enter a 5-digit zip code"),
+  // Optional: no zip means "anywhere in Houston".
+  zip: z.string().trim().regex(/^\d{5}$/, "Enter a 5-digit zip code, or leave it blank to search all of Houston").optional(),
+  // Called `rent` in URLs and APIs, but it is the monthly housing budget: today's rent, or the most the person would spend.
   rent: z.coerce
-    .number({ error: "Enter your monthly rent" })
-    .int("Round your rent to whole dollars")
-    .min(300, "Rent must be at least $300")
-    .max(20_000, "Rent must be under $20,000"),
+    .number({ error: "Enter your monthly budget" })
+    .int("Round your budget to whole dollars")
+    .min(300, "Budget must be at least $300")
+    .max(20_000, "Budget must be under $20,000"),
 });
 
 export type Search = z.infer<typeof SearchSchema> & { filters: Filters };
@@ -94,7 +107,7 @@ export function parseFilters(params: Params): Filters {
 
 export function parseSearch(params: Params) {
   const base = SearchSchema.safeParse({
-    zip: first(params.zip) ?? "",
+    zip: first(params.zip)?.trim() || undefined,
     rent: (first(params.rent) ?? "").replace(/[$,\s]/g, ""),
   });
   if (!base.success) return base;
@@ -102,7 +115,9 @@ export function parseSearch(params: Params) {
 }
 
 export function searchQuery({ zip, rent, filters }: Search) {
-  const q = new URLSearchParams({ zip, rent: String(rent) });
+  const q = new URLSearchParams();
+  if (zip) q.set("zip", zip);
+  q.set("rent", String(rent));
   for (const [param, key] of Object.entries(FILTER_PARAMS)) {
     const v = filters[key];
     if (v !== undefined) q.set(param, String(v));
