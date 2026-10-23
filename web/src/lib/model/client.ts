@@ -7,7 +7,7 @@ import { mockRecommend } from "./mock";
 const TIMEOUT_MS = 15_000;
 const RETRIES = 1;
 const MAX_RESULTS = 100;
-// The recommend API sizes the budget from rent plus cash down. The site doesn't
+// The rent-to-own API sizes the budget from rent plus cash down. The site doesn't
 // ask for savings yet, so the budget is what the rent alone would cover.
 const DOWN_PAYMENT = 0;
 
@@ -19,7 +19,11 @@ export class ModelError extends Error {
 }
 
 export function usingMockModel() {
-  return !process.env.MODEL_RECOMMEND_URL;
+  return !process.env.MODEL_API_URL;
+}
+
+function modelUrl(path: "/rent-to-own" | "/predict") {
+  return `${process.env.MODEL_API_URL!.replace(/\/+$/, "")}${path}`;
 }
 
 async function postJson(url: string, body: unknown): Promise<unknown> {
@@ -143,7 +147,7 @@ export function toListing(r: RecommendResult): Listing {
 export async function recommendHomes(search: Search): Promise<Listing[]> {
   if (usingMockModel()) return mockRecommend(search);
 
-  const body = await postJson(process.env.MODEL_RECOMMEND_URL!, {
+  const body = await postJson(modelUrl("/rent-to-own"), {
     zip: search.zip,
     monthly_rent: search.rent,
     down_payment: DOWN_PAYMENT,
@@ -151,7 +155,7 @@ export async function recommendHomes(search: Search): Promise<Listing[]> {
   });
   const parsed = RecommendResponseSchema.safeParse(body);
   if (!parsed.success) {
-    console.error("recommend API returned an invalid payload", parsed.error.issues.slice(0, 5));
+    console.error("rent-to-own API returned an invalid payload", parsed.error.issues.slice(0, 5));
     throw new ModelError("Model API returned an invalid payload");
   }
 
@@ -166,7 +170,7 @@ export async function recommendHomes(search: Search): Promise<Listing[]> {
 }
 
 async function predictPrice(home: Listing) {
-  if (!process.env.MODEL_PREDICT_URL || !home.location) return null;
+  if (usingMockModel() || !home.location) return null;
   const input: Record<string, unknown> = {
     beds: home.beds,
     baths: home.baths,
@@ -181,7 +185,7 @@ async function predictPrice(home: Listing) {
   for (const key of Object.keys(input)) if (input[key] == null) delete input[key];
 
   try {
-    const parsed = PredictResponseSchema.safeParse(await postJson(process.env.MODEL_PREDICT_URL, input));
+    const parsed = PredictResponseSchema.safeParse(await postJson(modelUrl("/predict"), input));
     if (!parsed.success) {
       console.error("predict API returned an invalid payload", parsed.error.issues.slice(0, 5));
       return null;

@@ -1,17 +1,21 @@
 # Model APIs
 
-The model team runs two AWS Lambda function URLs. The website calls them from the server only, through `web/src/lib/model/client.ts`. Set them in Vercel (and in `web/.env.local` for local runs):
+The model team runs one AWS Lambda function URL with two paths. The website calls it from the server only, through `web/src/lib/model/client.ts`. Set the base URL as `MODEL_API_URL` in Vercel (and in `web/.env.local` for local runs):
 
-| Env var | Purpose | Current URL |
-| --- | --- | --- |
-| `MODEL_RECOMMEND_URL` | Homes for a zip and rent | `https://kiv5uza7wi44vqz6euzswh2sla0rspum.lambda-url.us-east-1.on.aws/` |
-| `MODEL_PREDICT_URL` | Predicted price for one home | `https://25ycvhxvy2wzeccub6izcv3i7i0shtyj.lambda-url.us-east-1.on.aws/` |
+```
+MODEL_API_URL=https://25ycvhxvy2wzeccub6izcv3i7i0shtyj.lambda-url.us-east-1.on.aws
+```
+
+| Path | Purpose |
+| --- | --- |
+| `POST /rent-to-own` | Homes for a zip and rent |
+| `POST /predict` | Predicted price for one home |
 
 Requests time out after 15 seconds and are retried once on a 5xx or network error. Responses are validated with Zod. A malformed result is skipped; a malformed response shows the user a "try again" page.
 
-## Recommend
+## Rent-to-own
 
-`POST $MODEL_RECOMMEND_URL`
+`POST $MODEL_API_URL/rent-to-own`
 
 ```json
 { "zip": "77044", "monthly_rent": 2200, "down_payment": 0, "n_results": 100 }
@@ -58,7 +62,7 @@ Search filters from the chat (bedrooms, bathrooms, size, lot, home type) are app
 
 ## Predict
 
-`POST $MODEL_PREDICT_URL`
+`POST $MODEL_API_URL/predict`
 
 ```json
 {
@@ -74,12 +78,12 @@ Called for each home page (cached for an hour). The site leaves out fields it do
 ## Requests for the model team
 
 - **Budget on the full monthly cost, not principal and interest only.** `budget` is set so `monthly_pi` matches the rent, but property tax and insurance add about 40% in Houston (`monthly_total` is around $3,000 for a $2,200 rent). Most results show as "a stretch" on the site for that reason.
-- **Accept filters** (`min_beds`, `min_baths`, `min_sqft`, `min_lot_sqft`, `home_types`) so filtering happens before the top results are picked.
-- **Return `lat`, `lon` and `home_type`** in each result, so homes missing from the site's copy of the data can still get a map.
+- **Accept filters** on `/rent-to-own` (`min_beds`, `min_baths`, `min_sqft`, `min_lot_sqft`, `home_types`) so filtering happens before the top results are picked.
+- **Return `lat`, `lon` and `home_type`** in each `/rent-to-own` result, so homes missing from the site's copy of the data can still get a map.
 
 ## Running without the model
 
-Leave both env vars unset and the site uses a stand-in (`web/src/lib/model/mock.ts`): listings in or near the zip whose estimated monthly cost is at most 1.15x the rent, closest to the rent first.
+Leave `MODEL_API_URL` unset and the site uses a stand-in (`web/src/lib/model/mock.ts`): listings in or near the zip whose estimated monthly cost is at most 1.15x the rent, closest to the rent first.
 
 Rebuild the listing data from the CSV with:
 

@@ -190,7 +190,7 @@ async function HomeDetail({
   );
 }
 
-/** The verdict and reasons come from the recommend call, so reuse them when the visitor came from a search. */
+/** The verdict and reasons come from the rent-to-own call, so reuse them when the visitor came from a search. */
 async function withSearchContext(home: Listing, search: Search): Promise<Listing> {
   const homes = await cachedRecommendations(search).catch(() => [] as Listing[]);
   const match = homes.find((h) => h.id === home.id)?.model;

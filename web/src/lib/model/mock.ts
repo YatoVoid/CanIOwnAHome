@@ -12,7 +12,7 @@ function monthly(r: Row) {
 }
 
 /**
- * Stand-in for the model API when MODEL_RECOMMEND_URL is unset: homes whose
+ * Stand-in for the model API when MODEL_API_URL is unset: homes whose
  * estimated monthly cost (default assumptions) is at most NEAR_RENT_FACTOR x
  * rent, closest to the rent first. Applies the search filters, and falls back
  * to neighboring zips when the requested zip has too few matches.

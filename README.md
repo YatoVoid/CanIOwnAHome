@@ -17,11 +17,11 @@ Houston area only for now.
 ```sh
 cd web
 npm install
-cp .env.example .env.local   # add GEMINI_API_KEY and the two MODEL_*_URL values
+cp .env.example .env.local   # add GEMINI_API_KEY and MODEL_API_URL
 npm run dev
 ```
 
-Open http://localhost:3000. Without the `MODEL_*_URL` values the site uses a stand-in model over `web/data/listings`. Without `GEMINI_API_KEY` descriptions fall back to a one-line summary.
+Open http://localhost:3000. Without `MODEL_API_URL` the site uses a stand-in model over `web/data/listings`. Without `GEMINI_API_KEY` descriptions fall back to a one-line summary.
 
 ```sh
 npm test          # vitest
@@ -35,7 +35,7 @@ npm run typecheck # run after `npm run build` once, it generates route types
 2. Environment variables:
    - `GEMINI_API_KEY`: server-side only. Never add a `NEXT_PUBLIC_` copy.
    - `GEMINI_MODEL`: optional, defaults to `gemini-3.5-flash` (falls back to `gemini-flash-lite-latest` when busy).
-   - `MODEL_RECOMMEND_URL`, `MODEL_PREDICT_URL`: the model team's Lambda URLs (see `CONTRACT.md`).
+   - `MODEL_API_URL`: the model team's Lambda base URL (see `CONTRACT.md`).
 3. In the Google Cloud console, set a quota or budget cap on the Gemini key. The app's per-IP limits (30 descriptions a minute, 15 chat messages a minute, 200 a day) are in memory per function instance and only stop bursts.
 
 ## Pages

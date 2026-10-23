@@ -22,14 +22,12 @@ const result = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-describe("recommend API", () => {
+describe("model API", () => {
   beforeEach(() => {
-    process.env.MODEL_RECOMMEND_URL = "https://recommend.test/";
-    process.env.MODEL_PREDICT_URL = "https://predict.test/";
+    process.env.MODEL_API_URL = "https://model.test/";
   });
   afterEach(() => {
-    delete process.env.MODEL_RECOMMEND_URL;
-    delete process.env.MODEL_PREDICT_URL;
+    delete process.env.MODEL_API_URL;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -41,7 +39,7 @@ describe("recommend API", () => {
     const [home] = await recommendHomes({ zip: "77044", rent: 2200, filters: {} });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://recommend.test/");
+    expect(url).toBe("https://model.test/rent-to-own");
     expect(JSON.parse(init.body)).toEqual({ zip: "77044", monthly_rent: 2200, down_payment: 0, n_results: 100 });
     expect(home.id).toBe("28276795");
     expect(home.location).not.toBeNull();
@@ -97,6 +95,7 @@ describe("recommend API", () => {
     const home = await getListing("28276795");
 
     expect(home?.model).toMatchObject({ predictedPrice: 318776, low: 207247, high: 430305 });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://model.test/predict");
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent).toMatchObject({ lat: expect.any(Number), lon: expect.any(Number), home_type: "SINGLE_FAMILY" });
     expect(Object.values(sent)).not.toContain(null);
