@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Instrument_Sans, Newsreader } from "next/font/google";
 import Link from "next/link";
 import { AssumptionsProvider } from "@/components/assumptions";
+import { Suspense } from "react";
+import { Nav, NavFallback } from "@/components/nav";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -31,10 +33,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <header className="border-b border-line">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-            <Link href="/" className="display text-xl">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 pt-4 sm:px-6">
+            <Link href="/" className="display pb-2 text-xl">
               Can I Own a Home<span className="text-accent">?</span>
             </Link>
+            <Suspense fallback={<NavFallback />}>
+              <Nav />
+            </Suspense>
           </div>
         </header>
         <AssumptionsProvider>

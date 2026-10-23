@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAssumptions } from "@/components/assumptions";
 import { RatesPanel } from "@/components/rates-panel";
 import { costBreakdown, housingBudget, maxAffordablePrice, withSavings } from "@/lib/finance";
@@ -75,7 +76,16 @@ export function AffordabilityCard({ search }: { search: Search }) {
         )}
       </div>
 
-      <div className="mt-6">
+      <p className="mt-6 text-sm">
+        <Link
+          href={`/what-if?income=${search.income}&rent=${search.rent}&savings=${savings}&debts=${debts}`}
+          className="font-semibold underline underline-offset-4"
+        >
+          What if you saved more, earned more or got a lower rate?
+        </Link>
+      </p>
+
+      <div className="mt-4">
         <RatesPanel />
       </div>
     </section>
