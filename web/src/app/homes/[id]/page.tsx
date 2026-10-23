@@ -1,25 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { connection } from "next/server";
 import { Suspense } from "react";
-import { ArrowLeft, ArrowRight, ExternalLink, Sparkles } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { Gallery } from "@/components/gallery";
-import { TierBadge } from "@/components/tier-badge";
-import { ValueScale } from "@/components/value-scale";
-import { cachedListing, cachedRecommendations } from "@/lib/data";
-import { describeHome, descriptionFacts } from "@/lib/describe";
-import { geminiConfigured } from "@/lib/gemini";
-import { bathsLabel, compactMoney, count, money, photoAt } from "@/lib/format";
-import { homeTypeLabel, parseSearch, searchQuery, type Listing, type Search } from "@/lib/listing";
-import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { HomeDescription, HomeNav, ModelVerdict, PriceCheck } from "@/components/home-model";
+import { Section } from "@/components/section";
+import { cachedListing } from "@/lib/data";
+import { bathsLabel, count, money, photoAt } from "@/lib/format";
+import { homeTypeLabel, parseSearch } from "@/lib/listing";
 
 export const metadata: Metadata = { title: "Home details" };
-
-const allowDescription = createRateLimiter({ limit: 30, windowMs: 60_000 });
 
 export default function HomePage({ params, searchParams }: PageProps<"/homes/[id]">) {
   return (
@@ -37,12 +29,11 @@ async function HomeDetail({
   searchParams: PageProps<"/homes/[id]">["searchParams"];
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const listing = await cachedListing(id);
-  if (!listing) notFound();
+  const home = await cachedListing(id);
+  if (!home) notFound();
 
   const parsed = parseSearch(sp);
   const search = parsed.success ? parsed.data : null;
-  const home = search ? await withSearchContext(listing, search) : listing;
   const rent = search?.rent ?? home.estimates.rent ?? null;
   const address = `${home.address.street}, ${home.address.city}, ${home.address.state} ${home.address.zip}`;
   const facts = [
@@ -114,28 +105,13 @@ async function HomeDetail({
                 {home.daysOnMarket != null && <Fact label="Days listed" value={String(home.daysOnMarket)} />}
                 <Fact label="HOA" value={home.hoaMonthly != null ? `${money(home.hoaMonthly)}/mo` : "Not listed"} />
               </dl>
-              {home.model?.tier && <TierBadge tier={home.model.tier} />}
-              {home.model && home.model.reasons.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Why it was picked</p>
-                  <ul className="mt-2 space-y-1.5 text-ink-2">
-                    {home.model.reasons.map((r) => (
-                      <li key={r} className="flex gap-2">
-                        <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-accent" />
-                        {r}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <ModelVerdict home={home} search={search} />
             </div>
           </div>
         </Section>
 
         <Section eyebrow="About" title="What it's like">
-          <Suspense fallback={<DescriptionSkeleton />}>
-            <Description home={home} />
-          </Suspense>
+          <HomeDescription home={home} />
         </Section>
 
         {rent != null && (
@@ -149,7 +125,7 @@ async function HomeDetail({
           </Section>
         )}
 
-        <PriceCheck home={home} />
+        <PriceCheck home={home} search={search} />
 
         {home.location && (
           <Section eyebrow="Location" title="Where it is">
@@ -190,158 +166,6 @@ async function HomeDetail({
   );
 }
 
-/** The verdict and reasons come from the rent-to-own call, so reuse them when the visitor came from a search. */
-async function withSearchContext(home: Listing, search: Search): Promise<Listing> {
-  const homes = await cachedRecommendations(search).catch(() => [] as Listing[]);
-  const match = homes.find((h) => h.id === home.id)?.model;
-  if (!match) return home;
-  return {
-    ...home,
-    model: {
-      ...match,
-      predictedPrice: match.predictedPrice ?? home.model?.predictedPrice ?? null,
-      low: home.model?.low ?? match.low,
-      high: home.model?.high ?? match.high,
-    },
-  };
-}
-
-async function HomeNav({ id, search }: { id: string; search: Search }) {
-  const homes = await cachedRecommendations(search).catch(() => [] as Listing[]);
-  const i = homes.findIndex((h) => h.id === id);
-  const q = `?${searchQuery(search)}`;
-  const prev = i > 0 ? homes[i - 1] : null;
-  const next = i >= 0 && i < homes.length - 1 ? homes[i + 1] : null;
-
-  return (
-    <nav aria-label="Browse homes" className="border-b border-line">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm sm:px-6">
-        <Link href={`/homes${q}`} className="inline-flex items-center gap-1.5 text-ink-2 hover:text-ink">
-          <ArrowLeft className="size-4" aria-hidden /> All homes
-        </Link>
-        {i >= 0 && (
-          <div className="flex items-center gap-4">
-            {prev ? (
-              <Link href={`/homes/${prev.id}${q}`} className="inline-flex items-center gap-1 hover:underline">
-                <ArrowLeft className="size-4" aria-hidden /> Previous
-              </Link>
-            ) : (
-              <span className="text-ink-3">Previous</span>
-            )}
-            <span className="tabular-nums text-ink-3">
-              {i + 1} of {homes.length}
-            </span>
-            {next ? (
-              <Link href={`/homes/${next.id}${q}`} className="inline-flex items-center gap-1 hover:underline">
-                Next <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            ) : (
-              <span className="text-ink-3">Next</span>
-            )}
-          </div>
-        )}
-      </div>
-    </nav>
-  );
-}
-
-async function Description({ home }: { home: Listing }) {
-  if (!geminiConfigured()) return <FallbackDescription home={home} />;
-
-  await connection();
-  const ip = clientIp(await headers());
-  if (!allowDescription(`${ip}`)) return <FallbackDescription home={home} />;
-
-  let text: string;
-  try {
-    text = await describeHome(descriptionFacts(home));
-  } catch (err) {
-    console.error("description failed", home.id, err instanceof Error ? err.message : err);
-    return <FallbackDescription home={home} />;
-  }
-
-  return (
-    <div className="max-w-3xl">
-      <div className="space-y-4 text-lg leading-relaxed text-ink-2">
-        {text
-          .split(/\n\s*\n/)
-          .filter(Boolean)
-          .map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
-      </div>
-      <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-ink-3">
-        <Sparkles className="size-3.5" aria-hidden />
-        Description generated by Google Gemini from the listing facts above. It can be wrong, so check details with the seller.
-      </p>
-    </div>
-  );
-}
-
-function FallbackDescription({ home }: { home: Listing }) {
-  const parts = [
-    `${homeTypeLabel(home.homeType)} home in ${home.address.city}, ${home.address.zip}`,
-    home.beds != null && home.baths != null && `with ${home.beds} bedrooms and ${bathsLabel(home.baths)} bathrooms`,
-    home.sqft != null && `across ${count(home.sqft)} square feet`,
-  ].filter(Boolean);
-  return <p className="max-w-3xl text-lg leading-relaxed text-ink-2">{parts.join(" ")}.</p>;
-}
-
-function PriceCheck({ home }: { home: Listing }) {
-  const marks = [
-    home.model?.predictedPrice != null && {
-      key: "model",
-      label: "Model estimate",
-      value: home.model.predictedPrice,
-      note:
-        home.model.low != null && home.model.high != null
-          ? `Our pricing model, likely ${compactMoney(home.model.low)} to ${compactMoney(home.model.high)}`
-          : "Our pricing model",
-    },
-    home.estimates.value != null &&
-      home.estimates.value !== home.model?.predictedPrice && {
-        key: "value",
-        label: "Market estimate",
-        value: home.estimates.value,
-        note: "Automated valuation",
-      },
-    home.estimates.taxAssessed != null && {
-      key: "tax",
-      label: "Tax appraisal",
-      value: home.estimates.taxAssessed,
-      note: "County appraised value",
-    },
-  ].filter(Boolean) as { key: string; label: string; value: number; note: string }[];
-
-  if (marks.length === 0) return null;
-
-  const ref = marks[0].value;
-  const gap = (home.price - ref) / ref;
-  const verdict =
-    Math.abs(gap) < 0.03
-      ? "The asking price is in line with the estimates."
-      : gap > 0
-        ? `The asking price is ${Math.round(gap * 100)}% above the ${marks[0].label.toLowerCase()}. There may be room to negotiate.`
-        : `The asking price is ${Math.round(-gap * 100)}% below the ${marks[0].label.toLowerCase()}.`;
-
-  return (
-    <Section eyebrow="Value" title="Is the price fair?">
-      <p className="mb-6 max-w-2xl text-lg text-ink-2">{verdict}</p>
-      <ValueScale price={home.price} marks={marks} />
-    </Section>
-  );
-}
-
-function Section({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2 className="display mb-8 mt-2 text-4xl sm:text-5xl">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 py-2.5">
@@ -355,16 +179,6 @@ function osmEmbed(lat: number, lng: number) {
   const d = 0.008;
   const bbox = [lng - d, lat - d * 0.6, lng + d, lat + d * 0.6].map((n) => n.toFixed(5)).join(",");
   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
-}
-
-function DescriptionSkeleton() {
-  return (
-    <div className="max-w-3xl animate-pulse space-y-3" aria-busy="true" aria-label="Writing description">
-      <div className="h-4 rounded bg-sunk" />
-      <div className="h-4 rounded bg-sunk" />
-      <div className="h-4 w-4/5 rounded bg-sunk" />
-    </div>
-  );
 }
 
 function DetailSkeleton() {

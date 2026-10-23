@@ -1,11 +1,18 @@
 import { cacheLife } from "next/cache";
 import type { Search } from "@/lib/listing";
-import { getListing, recommendHomes } from "@/lib/model/client";
+import { getListing, predict, rentToOwn } from "@/lib/model/client";
+import type { PredictInput } from "@/lib/model/predict-input";
 
-export async function cachedRecommendations(search: Search) {
+export async function cachedRentToOwn(search: Search) {
   "use cache";
   cacheLife("minutes");
-  return recommendHomes(search);
+  return rentToOwn(search);
+}
+
+export async function cachedPredict(input: PredictInput) {
+  "use cache";
+  cacheLife("hours");
+  return predict(input);
 }
 
 export async function cachedListing(id: string) {

@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AssumptionControls } from "@/components/assumptions";
-import { HomeGrid } from "@/components/home-grid";
+import { HomeResults } from "@/components/home-results";
 import { SearchForm } from "@/components/search-form";
-import { cachedRecommendations } from "@/lib/data";
-import { money } from "@/lib/format";
 import Link from "next/link";
 import { describeFilters, parseSearch, searchQuery, type Filters, type Search } from "@/lib/listing";
-import { usingMockModel } from "@/lib/model/client";
 
 export const metadata: Metadata = { title: "Homes you could own" };
 
@@ -43,58 +39,24 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
   }
 
   const search = parsed.data;
-  const { zip, rent, filters } = search;
-  const homes = await cachedRecommendations(search);
-  const query = searchQuery(search);
-  const keep = Object.fromEntries(new URLSearchParams(query));
+  const keep = Object.fromEntries(new URLSearchParams(searchQuery(search)));
   delete keep.zip;
   delete keep.rent;
-  const hasFilters = describeFilters(filters).length > 0;
+  const hasFilters = describeFilters(search.filters).length > 0;
 
   return (
-    <>
-      <section className="border-b border-line py-10">
-        <p className="eyebrow">Zip {zip}</p>
-        <h1 className="display mt-3 text-4xl sm:text-5xl">
-          {homes.length > 0 ? (
-            <>
-              {homes.length} homes you could own for around <span className="text-accent-ink">{money(rent)}</span> a
-              month
-            </>
-          ) : (
-            <>No homes matched {money(rent)} a month here yet</>
-          )}
-        </h1>
-        <div className="mt-6">
-          <SearchForm zip={zip} rent={rent} size="bar" keep={keep} />
-        </div>
-        {hasFilters && <FilterChips search={search} />}
-      </section>
-
-      {homes.length > 0 ? (
+    <HomeResults
+      search={search}
+      hasFilters={hasFilters}
+      form={
         <>
-          <section className="sticky top-0 z-10 -mx-4 border-b border-line bg-paper/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
-            <AssumptionControls compact />
-          </section>
-          <section className="py-10">
-            <HomeGrid homes={homes} query={query} zip={zip} rent={rent} />
-          </section>
+          <div className="mt-6">
+            <SearchForm zip={search.zip} rent={search.rent} size="bar" keep={keep} />
+          </div>
+          {hasFilters && <FilterChips search={search} />}
         </>
-      ) : (
-        <p className="max-w-xl py-10 text-ink-2">
-          {hasFilters
-            ? "Nothing nearby matched every requirement. Remove one of the filters above, or try a slightly higher monthly amount."
-            : "Try a slightly higher monthly amount or a nearby zip code. Coverage is limited to the Houston area for now."}
-        </p>
-      )}
-
-      {usingMockModel() && (
-        <p className="text-sm text-ink-3">
-          Results come from the demo model (affordability filter over listing data). The trained model is not connected
-          yet.
-        </p>
-      )}
-    </>
+      }
+    />
   );
 }
 

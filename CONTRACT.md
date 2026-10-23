@@ -11,6 +11,17 @@ MODEL_API_URL=https://25ycvhxvy2wzeccub6izcv3i7i0shtyj.lambda-url.us-east-1.on.a
 | `POST /rent-to-own` | Homes for a zip and rent |
 | `POST /predict` | Predicted price for one home |
 
+The Lambda doesn't send CORS headers, so browsers can't call it directly. The site's own routes forward to it, and the pages call those routes from the browser, so every model call shows in DevTools → Network:
+
+| Browser calls | Forwards to | Response |
+| --- | --- | --- |
+| `POST /api/rent-to-own` `{"zip","monthly_rent","filters"}` | `$MODEL_API_URL/rent-to-own` | `upstream` (the Lambda URL), `model` (the Lambda's raw JSON), `homes` (enriched listings) |
+| `POST /api/predict` (same body as `/predict`) | `$MODEL_API_URL/predict` | `upstream`, `prediction` |
+| `POST /api/chat` `{"messages"}` | Gemini | reply and extracted filters |
+| `GET /api/describe?id=` | Gemini | listing description |
+
+These routes only answer the site's own pages (same-origin check), cap bodies at 64 KB, and rate-limit per IP.
+
 Requests time out after 15 seconds and are retried once on a 5xx or network error. Responses are validated with Zod. A malformed result is skipped; a malformed response shows the user a "try again" page.
 
 ## Rent-to-own

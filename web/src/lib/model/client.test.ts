@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getListing, ModelError, recommendHomes } from "./client";
+import { getListing, ModelError, predict, recommendHomes, rentToOwn } from "./client";
+import { predictInput } from "./predict-input";
 import { mockRecommend } from "./mock";
 import { costBreakdown, DEFAULT_ASSUMPTIONS, NEAR_RENT_FACTOR } from "@/lib/finance";
 
@@ -86,27 +87,39 @@ describe("model API", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("adds the predicted price range to a single listing, without sending unknown fields", async () => {
+  it("returns the model's raw response and the endpoint alongside the homes", async () => {
+    const raw = { budget: 348064, results: [result()] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(raw)));
+    const out = await rentToOwn({ zip: "77044", rent: 2200, filters: {} });
+    expect(out.upstream).toBe("https://model.test/rent-to-own");
+    expect(out.model).toEqual(raw);
+    expect(out.homes).toHaveLength(1);
+  });
+
+  it("calls /predict without sending unknown fields", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(Response.json({ predicted_price: 318776, low_estimate: 207247, high_estimate: 430305 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const home = await getListing("28276795");
+    const input = predictInput({ ...home!, estimates: { ...home!.estimates, rent: null } })!;
+    const out = await predict(input);
 
-    expect(home?.model).toMatchObject({ predictedPrice: 318776, low: 207247, high: 430305 });
-    expect(fetchMock.mock.calls[0][0]).toBe("https://model.test/predict");
+    expect(out).toEqual({
+      upstream: "https://model.test/predict",
+      prediction: { predicted_price: 318776, low_estimate: 207247, high_estimate: 430305 },
+    });
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent).toMatchObject({ lat: expect.any(Number), lon: expect.any(Number), home_type: "SINGLE_FAMILY" });
-    expect(Object.values(sent)).not.toContain(null);
+    expect(sent).not.toHaveProperty("rent_zestimate");
   });
 
-  it("still shows a listing when the predict API fails", async () => {
+  it("throws when /predict returns something unexpected", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ price: "lots" })));
     const home = await getListing("28276795");
-    expect(home?.id).toBe("28276795");
-    expect(home?.model).toBeNull();
+    await expect(predict(predictInput(home!)!)).rejects.toBeInstanceOf(ModelError);
   });
 
   it("returns null for unknown or malformed ids without calling the API", async () => {

@@ -3,6 +3,7 @@ import { compactMoney } from "@/lib/format";
 import { matchesFilters, type Listing, type Search } from "@/lib/listing";
 import { rowById, rowToListing } from "@/lib/listings-store";
 import { mockRecommend } from "./mock";
+import type { PredictInput } from "./predict-input";
 
 const TIMEOUT_MS = 15_000;
 const RETRIES = 1;
@@ -144,10 +145,19 @@ export function toListing(r: RecommendResult): Listing {
   };
 }
 
-export async function recommendHomes(search: Search): Promise<Listing[]> {
-  if (usingMockModel()) return mockRecommend(search);
+export type RentToOwnResult = {
+  /** The model endpoint that answered, or null when the stand-in model ran. */
+  upstream: string | null;
+  /** The model's response exactly as received. */
+  model: unknown;
+  homes: Listing[];
+};
 
-  const body = await postJson(modelUrl("/rent-to-own"), {
+export async function rentToOwn(search: Search): Promise<RentToOwnResult> {
+  if (usingMockModel()) return { upstream: null, model: null, homes: mockRecommend(search) };
+
+  const upstream = modelUrl("/rent-to-own");
+  const body = await postJson(upstream, {
     zip: search.zip,
     monthly_rent: search.rent,
     down_payment: DOWN_PAYMENT,
@@ -166,60 +176,35 @@ export async function recommendHomes(search: Search): Promise<Listing[]> {
     const home = toListing(r.data);
     if (matchesFilters(home, search.filters)) homes.push(home);
   }
-  return homes;
+  return { upstream, model: body, homes };
 }
 
-async function predictPrice(home: Listing) {
-  if (usingMockModel() || !home.location) return null;
-  const input: Record<string, unknown> = {
-    beds: home.beds,
-    baths: home.baths,
-    sqft_living: home.sqft,
-    home_type: home.homeType,
-    lat: home.location.lat,
-    lon: home.location.lng,
-    rent_zestimate: home.estimates.rent,
-    tax_assessed: home.estimates.taxAssessed,
-  };
-  // The model treats an explicit null differently from a missing field, so only send what is known.
-  for (const key of Object.keys(input)) if (input[key] == null) delete input[key];
+export async function recommendHomes(search: Search): Promise<Listing[]> {
+  return (await rentToOwn(search)).homes;
+}
 
-  try {
-    const parsed = PredictResponseSchema.safeParse(await postJson(modelUrl("/predict"), input));
-    if (!parsed.success) {
-      console.error("predict API returned an invalid payload", parsed.error.issues.slice(0, 5));
-      return null;
-    }
-    return parsed.data;
-  } catch (err) {
-    console.error("predict failed", home.id, err instanceof Error ? err.message : err);
-    return null;
+export type PredictResult = {
+  upstream: string | null;
+  prediction: z.infer<typeof PredictResponseSchema> | null;
+};
+
+export async function predict(input: PredictInput): Promise<PredictResult> {
+  if (usingMockModel()) return { upstream: null, prediction: null };
+  const upstream = modelUrl("/predict");
+  const parsed = PredictResponseSchema.safeParse(await postJson(upstream, input));
+  if (!parsed.success) {
+    console.error("predict API returned an invalid payload", parsed.error.issues.slice(0, 5));
+    throw new ModelError("Model API returned an invalid payload");
   }
+  return { upstream, prediction: parsed.data };
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
   const row = rowById(id);
   if (!row) return null;
-
   const home = rowToListing(row);
-  if (usingMockModel()) return { ...home, model: mockModelFields(home) };
-
-  const prediction = await predictPrice(home);
-  if (!prediction) return home;
-  return {
-    ...home,
-    model: {
-      predictedPrice: prediction.predicted_price,
-      low: prediction.low_estimate ?? null,
-      high: prediction.high_estimate ?? null,
-      tier: null,
-      score: null,
-      reasons: [],
-    },
-  };
-}
-
-function mockModelFields(home: Listing): Listing["model"] {
-  return { predictedPrice: home.estimates.value, low: null, high: null, tier: null, score: null, reasons: [] };
+  return usingMockModel()
+    ? { ...home, model: { predictedPrice: home.estimates.value, low: null, high: null, tier: null, score: null, reasons: [] } }
+    : home;
 }

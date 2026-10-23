@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowRight, Check, CornerDownLeft, RotateCcw } from "lucide-react";
-import { sendChat } from "@/app/actions";
+import { postChat } from "@/lib/api-client";
 import type { ChatMessage, ChatResult } from "@/lib/chat";
 import { money } from "@/lib/format";
 import { describeFilters, searchQuery } from "@/lib/listing";
@@ -63,9 +63,11 @@ export function HomeChat() {
     setError(null);
 
     startTransition(async () => {
-      const res = await sendChat(history.slice(-24)).catch(() => null);
-      if (!res || !res.ok) {
-        setError(res?.error ?? "Couldn't reach the assistant. Check your connection and try again.");
+      let res: ChatResult;
+      try {
+        res = await postChat(history.slice(-24));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Couldn't reach the assistant. Try again.");
         setMessages(messages);
         setDraft(trimmed);
         return;

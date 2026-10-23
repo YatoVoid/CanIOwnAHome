@@ -12,12 +12,10 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
-  experimental: {
-    serverActions: { bodySizeLimit: "64kb" },
-  },
   outputFileTracingIncludes: {
-    "/homes": ["./data/listings/**"],
     "/homes/[id]": ["./data/listings/**"],
+    "/api/rent-to-own": ["./data/listings/**"],
+    "/api/describe": ["./data/listings/**"],
   },
   turbopack: {
     rules: {
