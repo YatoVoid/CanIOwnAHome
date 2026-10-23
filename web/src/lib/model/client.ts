@@ -92,10 +92,10 @@ const https = (u: string | null | undefined) => (u && /^https:\/\/[^\s"'<>]+$/.t
 function reasonFor(r: RecommendResult): string | null {
   if (r.delta_pct == null || r.predicted_price == null) return null;
   const pct = Math.abs(Math.round(r.delta_pct));
-  if (pct < 2) return `Priced in line with the model's estimate of ${compactMoney(r.predicted_price)}`;
+  if (pct < 2) return `Priced in line with our hosted model's estimate of ${compactMoney(r.predicted_price)}`;
   return r.delta_pct < 0
-    ? `Priced ${pct}% below the model's estimate of ${compactMoney(r.predicted_price)}`
-    : `Priced ${pct}% above the model's estimate of ${compactMoney(r.predicted_price)}`;
+    ? `Priced ${pct}% below our hosted model's estimate of ${compactMoney(r.predicted_price)}`
+    : `Priced ${pct}% above our hosted model's estimate of ${compactMoney(r.predicted_price)}`;
 }
 
 function fromResult(r: RecommendResult): Listing {
@@ -262,8 +262,8 @@ function dealToListing(d: z.infer<typeof DealResultSchema>, id: string): Listing
   const reasons = [
     gap != null && d.predicted != null
       ? gap >= 0
-        ? `Priced ${Math.round(gap)}% below the model's estimate of ${compactMoney(d.predicted)}`
-        : `Priced ${Math.round(-gap)}% above the model's estimate of ${compactMoney(d.predicted)}`
+        ? `Priced ${Math.round(gap)}% below our hosted model's estimate of ${compactMoney(d.predicted)}`
+        : `Priced ${Math.round(-gap)}% above our hosted model's estimate of ${compactMoney(d.predicted)}`
       : null,
     d.days_on_zillow != null ? `Listed for ${Math.round(d.days_on_zillow)} days` : null,
   ].filter((r): r is string => r !== null);

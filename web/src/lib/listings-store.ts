@@ -37,6 +37,11 @@ function loadMeta(): Meta {
   return meta;
 }
 
+/** Whether the listing data has any homes in this zip (it only covers the Houston area). */
+export function zipCovered(zip: string) {
+  return /^\d{5}$/.test(zip) && Boolean(loadMeta().zips[zip]);
+}
+
 export function rowsInZip(zip: string): Row[] {
   if (!/^\d{5}$/.test(zip) || !loadMeta().zips[zip]) return [];
   let rows = zipCache.get(zip);

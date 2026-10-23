@@ -133,14 +133,20 @@ export function parseFilters(params: Params): Filters {
   return filters;
 }
 
-const cleanNumber = (v: string | string[] | undefined) => first(v)?.replace(/[$,\s]/g, "") || undefined;
+/** "$1,900" → "1900", "15k" → "15000", blank → undefined (so the field reads as missing, not as 0). */
+export function cleanNumber(v: string | string[] | undefined) {
+  const s = first(v)?.trim().toLowerCase().replace(/[$,\s]/g, "");
+  if (!s) return undefined;
+  const k = /^(\d+(?:\.\d+)?)k$/.exec(s);
+  return k ? String(Math.round(Number(k[1]) * 1000)) : s;
+}
 
 export function parseSearch(params: Params) {
   // If the form sent income or savings (even blank), both are required. Old links with neither still work.
   const fromForm = params.income !== undefined || params.savings !== undefined;
   const base = (fromForm ? FullSearchSchema : SearchSchema).safeParse({
     zip: first(params.zip)?.trim() || undefined,
-    rent: (first(params.rent) ?? "").replace(/[$,\s]/g, ""),
+    rent: cleanNumber(params.rent),
     income: cleanNumber(params.income),
     savings: cleanNumber(params.savings),
     debts: cleanNumber(params.debts),

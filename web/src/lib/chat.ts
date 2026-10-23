@@ -36,7 +36,7 @@ Fields:
 - homeTypes: only if they say what kind of home. Allowed values: ${HOME_TYPES.join(", ")}. A "house" means SINGLE_FAMILY. "No condos" means every allowed value except CONDO.
 - Use null (or an empty list for homeTypes) for anything not known.
 
-Required before a search can run: annualIncome, monthlyRent, savings, and either householdSize or minBeds. monthlyDebts and the zip are optional. If they gave no zip, say you will search all of Houston and that they can add a zip to narrow it.
+Required before a search can run: annualIncome, monthlyRent, savings, and either householdSize or minBeds. monthlyDebts and the zip are optional. Only when the zip field you return is null, say you will search all of Houston and that they can add a zip to narrow it. When the zip field is set, say you will search that zip and never mention searching all of Houston. "Near 77084" or "around 77084" means zip 77084.
 
 The reply field is what you say back to the user:
 - If something required is missing, ask for it. Ask for at most two things per message, in plain words.

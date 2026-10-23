@@ -93,6 +93,7 @@ export function PriceCheck({ home, search }: { home: Listing; search: Search | n
     const prediction = predicted.status === "fulfilled" ? predicted.value?.prediction : null;
     const match = context.status === "fulfilled" && context.value ? findInResults(context.value, home.id) : undefined;
     return {
+      hosted: prediction ?? null,
       // Prefer the rent-to-own figure when the visitor came from a search, so this matches "Why it was picked".
       predictedPrice: match?.model?.predictedPrice ?? prediction?.predicted_price ?? home.model?.predictedPrice ?? null,
       low: prediction?.low_estimate ?? null,
@@ -100,54 +101,89 @@ export function PriceCheck({ home, search }: { home: Listing; search: Search | n
     };
   }, `${home.id}?${search ? searchQuery(search) : ""}`);
 
+  const ours = home.ours;
+  const eyebrow = ours ? "Second opinions" : "Value";
+  const title = ours ? "How other estimates compare" : "Is the price fair?";
+
   if (state.status === "loading") {
     return (
-      <Section eyebrow="Value" title="Is the price fair?">
+      <Section eyebrow={eyebrow} title={title}>
         <div className="h-64 animate-pulse rounded-xl bg-sunk" aria-busy="true" aria-label="Checking the price" />
       </Section>
     );
   }
 
   const model = state.status === "done" ? state.data : null;
-  const marks = [
-    model?.predictedPrice != null && {
-      key: "model",
-      label: "Model estimate",
-      value: model.predictedPrice,
-      note:
-        model.low != null && model.high != null
-          ? `Our pricing model, likely ${compactMoney(model.low)} to ${compactMoney(model.high)}`
-          : "Our pricing model",
-    },
-    home.estimates.value != null &&
-      home.estimates.value !== model?.predictedPrice && {
-        key: "value",
-        label: "Market estimate",
-        value: home.estimates.value,
-        note: "Automated valuation",
-      },
-    home.estimates.taxAssessed != null && {
-      key: "tax",
-      label: "Tax appraisal",
-      value: home.estimates.taxAssessed,
-      note: "County appraised value",
-    },
-  ].filter(Boolean) as Mark[];
+  const zestimate = home.estimates.value != null && {
+    key: "value",
+    label: "Zillow Zestimate",
+    value: home.estimates.value,
+    note: "Zillow's automated estimate",
+  };
+  const appraisal = home.estimates.taxAssessed != null && {
+    key: "tax",
+    label: "County appraisal",
+    value: home.estimates.taxAssessed,
+    note: "County appraised value",
+  };
+
+  // With our notebook score, the fair price above is the one the site stands behind; the hosted (AWS) model,
+  // Zillow and the county are shown as labeled second opinions so different numbers don't read as a contradiction.
+  const marks = (
+    ours
+      ? [
+          {
+            key: "ours",
+            label: "Our fair price",
+            value: ours.fairPrice,
+            note:
+              ours.low != null && ours.high != null
+                ? `Our three models, ${compactMoney(ours.low)} to ${compactMoney(ours.high)}`
+                : "Our three models",
+          },
+          model?.hosted && {
+            key: "hosted",
+            label: "Hosted model",
+            value: model.hosted.predicted_price,
+            note: "A separate model on AWS, trained on fewer details",
+          },
+          zestimate,
+          appraisal,
+        ]
+      : [
+          model?.predictedPrice != null && {
+            key: "model",
+            label: "Model estimate",
+            value: model.predictedPrice,
+            note:
+              model.low != null && model.high != null
+                ? `Our pricing model, likely ${compactMoney(model.low)} to ${compactMoney(model.high)}`
+                : "Our pricing model",
+          },
+          zestimate && zestimate.value !== model?.predictedPrice && zestimate,
+          appraisal,
+        ]
+  ).filter(Boolean) as Mark[];
 
   if (marks.length === 0) return null;
 
   const ref = marks[0].value;
   const gap = (home.price - ref) / ref;
+  const name = ours ? "our fair price" : marks[0].label.toLowerCase();
   const verdict =
     Math.abs(gap) < 0.03
-      ? "The asking price is in line with the estimates."
+      ? `The asking price is in line with ${name}.`
       : gap > 0
-        ? `The asking price is ${Math.round(gap * 100)}% above the ${marks[0].label.toLowerCase()}. There may be room to negotiate.`
-        : `The asking price is ${Math.round(-gap * 100)}% below the ${marks[0].label.toLowerCase()}.`;
+        ? `The asking price is ${Math.round(gap * 100)}% above ${name}. There may be room to negotiate.`
+        : `The asking price is ${Math.round(-gap * 100)}% below ${name}.`;
 
   return (
-    <Section eyebrow="Value" title="Is the price fair?">
-      <p className="mb-6 max-w-2xl text-lg text-ink-2">{verdict}</p>
+    <Section eyebrow={eyebrow} title={title}>
+      <p className="mb-6 max-w-2xl text-lg text-ink-2">
+        {verdict}
+        {ours &&
+          " The other estimates come from different models and data, so they won't match exactly. When they disagree a lot, treat the price as uncertain."}
+      </p>
       <ValueScale price={home.price} marks={marks} />
     </Section>
   );

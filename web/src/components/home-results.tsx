@@ -12,7 +12,17 @@ import { money } from "@/lib/format";
 import { searchQuery, type Search } from "@/lib/listing";
 import { useAsync } from "@/lib/use-async";
 
-export function HomeResults({ search, hasFilters, form }: { search: Search; hasFilters: boolean; form: ReactNode }) {
+export function HomeResults({
+  search,
+  hasFilters,
+  outOfArea = false,
+  form,
+}: {
+  search: Search;
+  hasFilters: boolean;
+  outOfArea?: boolean;
+  form: ReactNode;
+}) {
   const query = searchQuery(search);
   const { state, retry } = useAsync(() => fetchRentToOwn(search), query);
   const { zip, rent, savings } = search;
@@ -34,6 +44,8 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
           {state.data.homes.length} homes you could own for around <span className="text-accent-ink">{money(rent)}</span> a month
         </>
       )
+    ) : outOfArea ? (
+      <>We don&apos;t have listings for {zip}</>
     ) : (
       <>
         No homes matched {withIncome ? "your budget" : `${money(rent)} a month`} {zip ? "here" : "in Houston"} yet
@@ -97,7 +109,9 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
           </>
         ) : (
           <p className="max-w-xl py-10 text-ink-2">
-            {hasFilters
+            {outOfArea
+              ? "The site only covers the Houston area for now. Try a Houston zip code, or leave the zip blank to search all of Houston."
+              : hasFilters
               ? "Nothing matched every requirement. Remove one of the filters above, or try a slightly higher monthly budget."
               : zip
                 ? "Try a slightly higher monthly budget, a nearby zip code, or leave the zip blank to search all of Houston."
@@ -105,9 +119,7 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
           </p>
         ))}
 
-      {state.status === "done" && (
-        <BestDeals search={search} />
-      )}
+      {state.status === "done" && !outOfArea && <BestDeals search={search} />}
 
       {state.status === "done" && (withIncome || !zip) && (
         <p className="text-sm text-ink-3">

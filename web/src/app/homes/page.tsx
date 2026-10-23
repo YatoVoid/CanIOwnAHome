@@ -4,6 +4,7 @@ import { HomeResults } from "@/components/home-results";
 import { SearchForm } from "@/components/search-form";
 import Link from "next/link";
 import { describeFilters, parseSearch, searchQuery, type Filters, type Search } from "@/lib/listing";
+import { zipCovered } from "@/lib/listings-store";
 
 export const metadata: Metadata = { title: "Homes you could own" };
 
@@ -51,6 +52,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
     <HomeResults
       search={search}
       hasFilters={hasFilters}
+      outOfArea={search.zip !== undefined && !zipCovered(search.zip)}
       form={
         <>
           <div className="mt-6">
