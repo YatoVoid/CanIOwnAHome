@@ -11,11 +11,26 @@ The website validates every response with Zod (`web/src/lib/listing.ts`). A resp
 Request:
 
 ```json
-{ "zip": "77044", "monthlyRent": 2200 }
+{
+  "zip": "77044",
+  "monthlyRent": 2200,
+  "filters": { "minBeds": 4, "minLotSqft": 5000, "homeTypes": ["SINGLE_FAMILY"] }
+}
 ```
 
 - `zip`: 5-digit string.
 - `monthlyRent`: whole dollars, 300 to 20000.
+- `filters`: always present, often `{}`. Every key is optional:
+
+| Filter | Meaning |
+| --- | --- |
+| `minBeds` | Integer 1 to 10 |
+| `minBaths` | Number 1 to 10 |
+| `minSqft` | Living area, integer |
+| `minLotSqft` | Lot size, integer. The chat sets 5000 for "a yard", 8000 for "a big yard" |
+| `homeTypes` | Any of `SINGLE_FAMILY`, `TOWNHOUSE`, `CONDO`, `MULTI_FAMILY`, `MANUFACTURED` |
+
+Apply the filters before you pick the top homes. The website drops any returned home that breaks a filter, so ignoring them means the user sees fewer results, not wrong ones. A home with an unknown value (`null` beds, for example) counts as not matching that filter.
 
 Response `200`:
 

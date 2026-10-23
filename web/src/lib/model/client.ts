@@ -1,4 +1,4 @@
-import { ListingSchema, RecommendResponseSchema, type Listing, type Search } from "@/lib/listing";
+import { ListingSchema, matchesFilters, RecommendResponseSchema, type Listing, type Search } from "@/lib/listing";
 import { mockListing, mockRecommend } from "./mock";
 
 const TIMEOUT_MS = 10_000;
@@ -53,14 +53,14 @@ export async function recommendHomes(search: Search): Promise<Listing[]> {
   const body = await callModel("/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ zip: search.zip, monthlyRent: search.rent }),
+    body: JSON.stringify({ zip: search.zip, monthlyRent: search.rent, filters: search.filters }),
   });
   const parsed = RecommendResponseSchema.safeParse(body);
   if (!parsed.success) {
     console.error("model /recommend returned an invalid payload", parsed.error.issues.slice(0, 5));
     throw new ModelError("Model API returned an invalid payload");
   }
-  return parsed.data.homes;
+  return parsed.data.homes.filter((h) => matchesFilters(h, search.filters));
 }
 
 export async function getListing(id: string): Promise<Listing | null> {

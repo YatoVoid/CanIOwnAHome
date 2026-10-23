@@ -1,3 +1,4 @@
+import { HomeChat } from "@/components/home-chat";
 import { SearchForm } from "@/components/search-form";
 
 const STEPS = [
@@ -26,6 +27,20 @@ export default function Home() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section aria-labelledby="chat-heading" className="border-t border-line py-16">
+        <div className="mb-8 max-w-2xl">
+          <p className="eyebrow">Or describe it</p>
+          <h2 id="chat-heading" className="display mt-3 text-4xl sm:text-5xl">
+            Tell us who&apos;s moving in
+          </h2>
+          <p className="mt-3 text-lg text-ink-2">
+            Household size, a yard, an extra bedroom for an office. Describe it in your own words and the search will
+            narrow to homes that fit.
+          </p>
+        </div>
+        <HomeChat />
       </section>
     </div>
   );

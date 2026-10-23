@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  experimental: {
+    serverActions: { bodySizeLimit: "64kb" },
+  },
   outputFileTracingIncludes: {
     "/homes": ["./data/mock-listings.json"],
     "/homes/[id]": ["./data/mock-listings.json"],

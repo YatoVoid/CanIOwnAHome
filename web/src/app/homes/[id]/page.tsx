@@ -10,9 +10,10 @@ import { CostBreakdown } from "@/components/cost-breakdown";
 import { Gallery } from "@/components/gallery";
 import { ValueScale } from "@/components/value-scale";
 import { cachedListing, cachedRecommendations } from "@/lib/data";
-import { describeHome, descriptionFacts, geminiConfigured } from "@/lib/describe";
+import { describeHome, descriptionFacts } from "@/lib/describe";
+import { geminiConfigured } from "@/lib/gemini";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
-import { homeTypeLabel, parseSearch, type Listing, type Search } from "@/lib/listing";
+import { homeTypeLabel, parseSearch, searchQuery, type Listing, type Search } from "@/lib/listing";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 
 export const metadata: Metadata = { title: "Home details" };
@@ -189,7 +190,7 @@ async function HomeDetail({
 async function HomeNav({ id, search }: { id: string; search: Search }) {
   const homes = await cachedRecommendations(search).catch(() => [] as Listing[]);
   const i = homes.findIndex((h) => h.id === id);
-  const q = `?zip=${search.zip}&rent=${search.rent}`;
+  const q = `?${searchQuery(search)}`;
   const prev = i > 0 ? homes[i - 1] : null;
   const next = i >= 0 && i < homes.length - 1 ? homes[i + 1] : null;
 

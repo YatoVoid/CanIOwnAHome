@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { costBreakdown, DEFAULT_ASSUMPTIONS, NEAR_RENT_FACTOR } from "@/lib/finance";
 import { money } from "@/lib/format";
-import type { Listing, Search } from "@/lib/listing";
+import { matchesFilters, type Listing, type Search } from "@/lib/listing";
 
 // Compact rows written by scripts/build-mock-listings.py.
 type Row = {
@@ -87,12 +87,15 @@ function nearestZips(zip: string, centroids: Map<string, [number, number]>) {
 /**
  * Stand-in for the real model: homes whose estimated monthly cost (default
  * assumptions) is at most NEAR_RENT_FACTOR x rent, closest to the rent first.
- * Falls back to neighboring zips when the requested zip has too few matches.
+ * Applies the search filters, and falls back to neighboring zips when the
+ * requested zip has too few matches.
  */
-export function mockRecommend({ zip, rent }: Search): Listing[] {
+export function mockRecommend({ zip, rent, filters }: Search): Listing[] {
   const { rows, centroids } = load();
   const ceiling = rent * NEAR_RENT_FACTOR;
-  const fits = (r: Row) => monthly(r) <= ceiling;
+  const fits = (r: Row) =>
+    monthly(r) <= ceiling &&
+    matchesFilters({ beds: r.bd, baths: r.ba, sqft: r.sf, lotSqft: r.lot, homeType: r.t }, filters);
 
   let picked = rows.filter((r) => r.z === zip && fits(r));
   if (picked.length < MIN_IN_ZIP) {

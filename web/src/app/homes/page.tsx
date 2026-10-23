@@ -5,7 +5,8 @@ import { HomeGrid } from "@/components/home-grid";
 import { SearchForm } from "@/components/search-form";
 import { cachedRecommendations } from "@/lib/data";
 import { money } from "@/lib/format";
-import { parseSearch } from "@/lib/listing";
+import Link from "next/link";
+import { describeFilters, parseSearch, searchQuery, type Filters, type Search } from "@/lib/listing";
 import { usingMockModel } from "@/lib/model/client";
 
 export const metadata: Metadata = { title: "Homes you could own" };
@@ -41,8 +42,14 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
     );
   }
 
-  const { zip, rent } = parsed.data;
-  const homes = await cachedRecommendations({ zip, rent });
+  const search = parsed.data;
+  const { zip, rent, filters } = search;
+  const homes = await cachedRecommendations(search);
+  const query = searchQuery(search);
+  const keep = Object.fromEntries(new URLSearchParams(query));
+  delete keep.zip;
+  delete keep.rent;
+  const hasFilters = describeFilters(filters).length > 0;
 
   return (
     <>
@@ -59,8 +66,9 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
           )}
         </h1>
         <div className="mt-6">
-          <SearchForm zip={zip} rent={rent} size="bar" />
+          <SearchForm zip={zip} rent={rent} size="bar" keep={keep} />
         </div>
+        {hasFilters && <FilterChips search={search} />}
       </section>
 
       {homes.length > 0 ? (
@@ -69,12 +77,14 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
             <AssumptionControls compact />
           </section>
           <section className="py-10">
-            <HomeGrid homes={homes} zip={zip} rent={rent} />
+            <HomeGrid homes={homes} query={query} zip={zip} rent={rent} />
           </section>
         </>
       ) : (
         <p className="max-w-xl py-10 text-ink-2">
-          Try a slightly higher monthly amount or a nearby zip code. Coverage is limited to the Houston area for now.
+          {hasFilters
+            ? "Nothing nearby matched every requirement. Remove one of the filters above, or try a slightly higher monthly amount."
+            : "Try a slightly higher monthly amount or a nearby zip code. Coverage is limited to the Houston area for now."}
         </p>
       )}
 
@@ -85,6 +95,33 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
         </p>
       )}
     </>
+  );
+}
+
+const FILTER_KEYS: (keyof Filters)[] = ["minBeds", "minBaths", "minSqft", "minLotSqft", "homeTypes"];
+
+function FilterChips({ search }: { search: Search }) {
+  const chips = FILTER_KEYS.filter((k) => search.filters[k] !== undefined).map((key) => {
+    const without = { ...search, filters: { ...search.filters, [key]: undefined } };
+    return { key, label: describeFilters({ [key]: search.filters[key] })[0], href: `/homes?${searchQuery(without)}` };
+  });
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-ink-3">Filtered to</span>
+      {chips.map((c) => (
+        <Link
+          key={c.key}
+          href={c.href}
+          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1 hover:border-ink-3"
+          aria-label={`Remove filter: ${c.label}`}
+        >
+          {c.label}
+          <span aria-hidden className="text-ink-3">
+            ×
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
 

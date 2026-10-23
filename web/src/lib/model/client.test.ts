@@ -35,25 +35,32 @@ describe("model client against a real API", () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ homes: [listing] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const homes = await recommendHomes({ zip: "77007", rent: 2000 });
+    const homes = await recommendHomes({ zip: "77007", rent: 2000, filters: {} });
 
     expect(homes).toHaveLength(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://model.test/recommend");
-    expect(JSON.parse(init.body)).toEqual({ zip: "77007", monthlyRent: 2000 });
+    expect(JSON.parse(init.body)).toEqual({ zip: "77007", monthlyRent: 2000, filters: {} });
     expect(new Headers(init.headers).get("Authorization")).toBe("Bearer secret");
+  });
+
+  it("drops homes the model returned that break the filters", async () => {
+    const small = { ...listing, id: "small", beds: 2 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ homes: [listing, small] })));
+    const homes = await recommendHomes({ zip: "77007", rent: 2000, filters: { minBeds: 3 } });
+    expect(homes.map((h) => h.id)).toEqual(["abc"]);
   });
 
   it("throws on an invalid payload", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ homes: [{ id: "x" }] })));
     vi.spyOn(console, "error").mockImplementation(() => {});
-    await expect(recommendHomes({ zip: "77007", rent: 2000 })).rejects.toBeInstanceOf(ModelError);
+    await expect(recommendHomes({ zip: "77007", rent: 2000, filters: {} })).rejects.toBeInstanceOf(ModelError);
   });
 
   it("retries once on a 5xx, then gives up", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("down", { status: 503 }));
     vi.stubGlobal("fetch", fetchMock);
-    await expect(recommendHomes({ zip: "77007", rent: 2000 })).rejects.toThrow("503");
+    await expect(recommendHomes({ zip: "77007", rent: 2000, filters: {} })).rejects.toThrow("503");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -69,7 +76,7 @@ describe("model client against a real API", () => {
 describe("mock model", () => {
   it("returns homes in or near the zip that fit the rent ceiling", () => {
     const rent = 2200;
-    const homes = mockRecommend({ zip: "77044", rent });
+    const homes = mockRecommend({ zip: "77044", rent, filters: {} });
     expect(homes.length).toBeGreaterThan(0);
     for (const h of homes) {
       expect(costBreakdown(h.price, null, DEFAULT_ASSUMPTIONS).total).toBeLessThanOrEqual(rent * NEAR_RENT_FACTOR);
@@ -77,7 +84,16 @@ describe("mock model", () => {
     expect(mockListing(homes[0].id)?.id).toBe(homes[0].id);
   });
 
+  it("applies bedroom and home type filters", () => {
+    const homes = mockRecommend({ zip: "77044", rent: 2600, filters: { minBeds: 4, homeTypes: ["SINGLE_FAMILY"] } });
+    expect(homes.length).toBeGreaterThan(0);
+    for (const h of homes) {
+      expect(h.beds).toBeGreaterThanOrEqual(4);
+      expect(h.homeType).toBe("SINGLE_FAMILY");
+    }
+  });
+
   it("returns nothing for a zip outside the dataset", () => {
-    expect(mockRecommend({ zip: "10001", rent: 2000 })).toEqual([]);
+    expect(mockRecommend({ zip: "10001", rent: 2000, filters: {} })).toEqual([]);
   });
 });

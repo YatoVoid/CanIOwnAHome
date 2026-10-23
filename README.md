@@ -36,12 +36,12 @@ npm run typecheck # run after `npm run build` once, it generates route types
    - `GEMINI_API_KEY`: server-side only. Never add a `NEXT_PUBLIC_` copy.
    - `GEMINI_MODEL`: optional, defaults to `gemini-3.5-flash` (falls back to `gemini-flash-lite-latest` when busy).
    - `MODEL_API_URL`, `MODEL_API_KEY`: once the model API is live.
-3. In the Google Cloud console, set a quota or budget cap on the Gemini key. The app's per-IP limit (30 descriptions a minute) is in memory per function instance and only stops bursts.
+3. In the Google Cloud console, set a quota or budget cap on the Gemini key. The app's per-IP limits (30 descriptions a minute, 15 chat messages a minute, 200 a day) are in memory per function instance and only stop bursts.
 
 ## Pages
 
-- `/`: zip and rent form.
-- `/homes?zip=77044&rent=2200`: the recommended homes, with down payment, rate and term controls. Costs update live.
+- `/`: zip and rent form, and below it a chat where the user describes their household and needs. Gemini turns the conversation into search filters (bedrooms, bathrooms, size, yard, home type) and asks for whatever is missing. The search button appears once zip, rent and household size are known. Logic in `web/src/lib/chat.ts`, called through the server action in `web/src/app/actions.ts`.
+- `/homes?zip=77044&rent=2200`: the recommended homes, with down payment, rate and term controls. Costs update live. Optional filters: `beds`, `baths`, `sqft`, `lot`, `type` (comma-separated home types).
 - `/homes/[id]?zip=…&rent=…`: one home's presentation, with previous/next through the result list.
 
 ## Known gaps

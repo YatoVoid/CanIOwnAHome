@@ -5,9 +5,10 @@ type Props = {
   rent?: string | number;
   errors?: { zip?: string; rent?: string };
   size?: "hero" | "bar";
+  keep?: Record<string, string>;
 };
 
-export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero" }: Props) {
+export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero", keep = {} }: Props) {
   const hero = size === "hero";
   const input = hero
     ? "border-b-2 border-ink/40 bg-transparent text-center tabular-nums outline-none focus:border-accent"
@@ -15,6 +16,9 @@ export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero" }: 
 
   return (
     <form action="/homes" method="get" noValidate className={hero ? "" : "text-base"}>
+      {Object.entries(keep).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <p className={hero ? "display text-3xl leading-snug sm:text-5xl sm:leading-snug" : "flex flex-wrap items-center gap-2"}>
         <span>I live in </span>
         <label className="sr-only" htmlFor={`zip-${size}`}>

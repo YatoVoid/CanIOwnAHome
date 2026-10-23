@@ -8,7 +8,7 @@ import { costBreakdown } from "@/lib/finance";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
 import { homeTypeLabel, type Listing } from "@/lib/listing";
 
-export function HomeGrid({ homes, zip, rent }: { homes: Listing[]; zip: string; rent: number }) {
+export function HomeGrid({ homes, query, zip, rent }: { homes: Listing[]; query: string; zip: string; rent: number }) {
   const { assumptions } = useAssumptions();
   const rows = homes.map((home) => ({ home, monthly: costBreakdown(home.price, home.hoaMonthly, assumptions).total }));
 
@@ -17,7 +17,7 @@ export function HomeGrid({ homes, zip, rent }: { homes: Listing[]; zip: string; 
       {rows.map(({ home, monthly }, i) => (
         <li key={home.id}>
           <Link
-            href={`/homes/${home.id}?zip=${zip}&rent=${rent}`}
+            href={`/homes/${home.id}?${query}`}
             className="group block rounded-lg focus-visible:outline-offset-4"
           >
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-sunk">
