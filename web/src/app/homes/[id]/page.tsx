@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import { CostBreakdown } from "@/components/cost-breakdown";
@@ -227,6 +228,7 @@ async function HomeNav({ id, search }: { id: string; search: Search }) {
 async function Description({ home }: { home: Listing }) {
   if (!geminiConfigured()) return <FallbackDescription home={home} />;
 
+  await connection();
   const ip = clientIp(await headers());
   if (!allowDescription(`${ip}`)) return <FallbackDescription home={home} />;
 

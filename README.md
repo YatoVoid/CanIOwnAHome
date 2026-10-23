@@ -34,7 +34,7 @@ npm run typecheck # run after `npm run build` once, it generates route types
 1. Import the repo in Vercel and set **Root Directory** to `web`.
 2. Environment variables:
    - `GEMINI_API_KEY`: server-side only. Never add a `NEXT_PUBLIC_` copy.
-   - `GEMINI_MODEL`: optional, defaults to `gemini-flash-latest`.
+   - `GEMINI_MODEL`: optional, defaults to `gemini-3.5-flash` (falls back to `gemini-flash-lite-latest` when busy).
    - `MODEL_API_URL`, `MODEL_API_KEY`: once the model API is live.
 3. In the Google Cloud console, set a quota or budget cap on the Gemini key. The app's per-IP limit (30 descriptions a minute) is in memory per function instance and only stops bursts.
 
