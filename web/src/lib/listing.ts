@@ -48,6 +48,11 @@ export const ListingSchema = z.object({
       fairPrice: money,
       gapPct: z.number(), // positive = asking price is this many % below fair price
       label: z.enum(["bargain", "fair", "overpriced", "flood_trap"]),
+      // The spread of our three tree models around the fair price.
+      low: money.nullish(),
+      high: money.nullish(),
+      // The three biggest drivers of the price, as % effect versus an average home.
+      why: z.array(z.object({ label: z.string(), pct: z.number() })).nullish(),
       floodScore: z.number().min(0).max(1).nullable(),
       floodLevel: z.enum(["Low", "Medium", "High"]).nullable(),
     })

@@ -120,7 +120,7 @@ async function HomeDetail({
 
         {home.ours && (
           <Section eyebrow="Fair price and flooding" title="Is it cheap, or cheap for a reason?">
-            <OursCheck ours={home.ours} price={home.price} />
+            <OursCheck ours={home.ours} price={home.price} zestimate={home.estimates.value} />
           </Section>
         )}
 

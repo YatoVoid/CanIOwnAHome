@@ -64,9 +64,39 @@ const FLOOD_TEXT = {
   High: "One of the higher rates of flood-insurance claims in Houston, per listing. Be careful: ask about flood history, and price flood insurance before you buy.",
 } as const;
 
-export function OursCheck({ ours, price }: { ours: Ours; price: number }) {
-  const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const fmt = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+
+/** Where the asking price sits against our range, and against Zillow's Zestimate. */
+function PriceRange({ ours, price, zestimate }: { ours: Ours; price: number; zestimate?: number | null }) {
+  const low = ours.low ?? ours.fairPrice;
+  const high = ours.high ?? ours.fairPrice;
+  const values = [low, high, price, ours.fairPrice, ...(zestimate ? [zestimate] : [])];
+  const min = Math.min(...values) * 0.94;
+  const max = Math.max(...values) * 1.06;
+  const pos = (v: number) => `${((v - min) / (max - min)) * 100}%`;
+  return (
+    <div className="mt-5" role="img" aria-label={`Our fair price range ${fmt(low)} to ${fmt(high)}, asking ${fmt(price)}${zestimate ? `, Zillow Zestimate ${fmt(zestimate)}` : ""}`}>
+      <div className="relative h-8">
+        <div className="absolute top-3 h-2 w-full rounded bg-sunk" />
+        <div className="absolute top-3 h-2 rounded" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, minWidth: 6, background: "var(--series-1)", opacity: 0.45 }} />
+        <span className="absolute top-1 h-6 w-0.5 bg-ink" style={{ left: pos(ours.fairPrice) }} />
+        <span className="absolute top-0.5 size-3 -translate-x-1/2 rounded-full border-2 border-card" style={{ left: pos(price), background: "var(--accent)" }} />
+        {zestimate ? <span className="absolute top-0.5 size-3 -translate-x-1/2 rotate-45 border-2 border-card" style={{ left: pos(zestimate), background: "var(--series-2)" }} /> : null}
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-2">
+        <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-2 w-4 rounded-sm" style={{ background: "var(--series-1)", opacity: 0.45 }} />Our range {fmt(low)} to {fmt(high)}</li>
+        <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-0.5 bg-ink" />Our fair price {fmt(ours.fairPrice)}</li>
+        <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block size-2.5 rounded-full" style={{ background: "var(--accent)" }} />Asking {fmt(price)}</li>
+        {zestimate ? <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block size-2 rotate-45" style={{ background: "var(--series-2)" }} />Zillow Zestimate {fmt(zestimate)}</li> : null}
+      </ul>
+    </div>
+  );
+}
+
+export function OursCheck({ ours, price, zestimate }: { ours: Ours; price: number; zestimate?: number | null }) {
+  const money = fmt;
   const pct = floodPercentile(ours.floodScore);
+  const zGap = zestimate ? ((zestimate - ours.fairPrice) / ours.fairPrice) * 100 : null;
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-xl border border-line bg-card p-6">
@@ -74,6 +104,28 @@ export function OursCheck({ ours, price }: { ours: Ours; price: number }) {
         <p className="figure mt-2 text-4xl">{money(ours.fairPrice)}</p>
         <p className="mt-1 text-sm text-ink-3">Asking {money(price)}</p>
         <p className="mt-4 text-ink-2">{VERDICT[ours.label](ours.gapPct)}</p>
+        <PriceRange ours={ours} price={price} zestimate={zestimate} />
+        {zestimate && zGap != null && (
+          <p className="mt-4 text-sm text-ink-2">
+            Zillow&apos;s Zestimate is {money(zestimate)}, about {Math.abs(zGap).toFixed(0)}% {zGap >= 0 ? "above" : "below"} our fair price. Across
+            thousands of homes the Zestimate is the more accurate of the two (see the Our models tab), so treat the gap between them as the
+            uncertainty.
+          </p>
+        )}
+        {ours.why && ours.why.length > 0 && (
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="text-sm font-semibold">Why our model landed here</p>
+            <ul className="mt-2 space-y-1 text-sm text-ink-2">
+              {ours.why.map((w) => (
+                <li key={w.label} className="flex justify-between gap-4">
+                  <span>{w.label}</span>
+                  <span className="tabular-nums text-ink">{w.pct >= 0 ? "+" : "−"}{Math.abs(w.pct).toFixed(0)}%</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-ink-3">Biggest effects on the price compared with an average Houston home, from our LightGBM model.</p>
+          </div>
+        )}
       </div>
       <div className="rounded-xl border border-line bg-card p-6">
         <p className="eyebrow">Flood history of this zip</p>

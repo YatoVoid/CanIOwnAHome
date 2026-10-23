@@ -2,6 +2,7 @@ import { costBreakdown, DEFAULT_ASSUMPTIONS, housingBudget, NEAR_RENT_FACTOR, wi
 import { compactMoney, money } from "@/lib/format";
 import { matchesFilters, type Listing, type Ours, type Search } from "@/lib/listing";
 import { allRows, nearestZips, rowsInZip, rowToListing, type Row } from "@/lib/listings-store";
+import { oursFor } from "@/lib/ours";
 
 // Search ranked by our trained price model (fair price, deal label, flood level: lib/ours.ts).
 //  - With income: the budget comes from the affordability rules (lib/finance.ts housingBudget), savings are the down payment.
@@ -53,6 +54,13 @@ function collect(search: Search, keep: (c: Candidate) => boolean): Candidate[] {
   let out = from(rowsInZip(search.zip));
   if (out.length < MIN_IN_ZIP) for (const z of nearestZips(search.zip, NEIGHBOR_ZIPS)) out = out.concat(from(rowsInZip(z)));
   return out;
+}
+
+/** Prices of every home the site can recommend (scored, real street address, not manufactured). Used by the What if? page. */
+export function usablePrices(): number[] {
+  return allRows()
+    .filter((r) => usable(r, {}) && oursFor(r.id, r.z))
+    .map((r) => r.p);
 }
 
 function pickSpread(sorted: Candidate[], limit: number, perZip: number) {
