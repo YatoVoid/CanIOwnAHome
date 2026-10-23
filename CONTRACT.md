@@ -1,111 +1,88 @@
-# Model API contract
+# Model APIs
 
-The website calls the model over HTTP. The model team owns the server; the website owns the presentation and the monthly-cost math.
+The model team runs two AWS Lambda function URLs. The website calls them from the server only, through `web/src/lib/model/client.ts`. Set them in Vercel (and in `web/.env.local` for local runs):
 
-Base URL comes from `MODEL_API_URL` on Vercel. If `MODEL_API_KEY` is set, every request sends `Authorization: Bearer <key>`. Requests time out after 10 seconds and are retried once on a 5xx or network error.
+| Env var | Purpose | Current URL |
+| --- | --- | --- |
+| `MODEL_RECOMMEND_URL` | Homes for a zip and rent | `https://kiv5uza7wi44vqz6euzswh2sla0rspum.lambda-url.us-east-1.on.aws/` |
+| `MODEL_PREDICT_URL` | Predicted price for one home | `https://25ycvhxvy2wzeccub6izcv3i7i0shtyj.lambda-url.us-east-1.on.aws/` |
 
-The website validates every response with Zod (`web/src/lib/listing.ts`). A response that does not match is treated as an error and the user sees a "try again" page, so check your output against the examples below.
+Requests time out after 15 seconds and are retried once on a 5xx or network error. Responses are validated with Zod. A malformed result is skipped; a malformed response shows the user a "try again" page.
 
-## POST /recommend
+## Recommend
 
-Request:
+`POST $MODEL_RECOMMEND_URL`
+
+```json
+{ "zip": "77044", "monthly_rent": 2200, "down_payment": 0, "n_results": 100 }
+```
+
+The site sends `down_payment: 0` because it doesn't ask users for savings yet.
+
+Response:
 
 ```json
 {
   "zip": "77044",
-  "monthlyRent": 2200,
-  "filters": { "minBeds": 4, "minLotSqft": 5000, "homeTypes": ["SINGLE_FAMILY"] }
+  "monthly_rent": 2200.0,
+  "down_payment": 0.0,
+  "budget": 348064,
+  "tier_summary": { "GOOD_BUY": 126, "NEGOTIATE": 6, "OVERPRICED": 4 },
+  "total_found": 136,
+  "results": [
+    {
+      "id": 28276795,
+      "address": "12343 Haroldson Forest Dr, Houston, TX 77044",
+      "zipcode": "77044",
+      "price": 259999,
+      "predicted_price": 569467,
+      "delta_pct": -54.3,
+      "tier": "GOOD_BUY",
+      "beds": 6.0,
+      "baths": 3.0,
+      "sqft_living": 3351.0,
+      "monthly_pi": 1517,
+      "monthly_total": 2167,
+      "photo": "https://photos.zillowstatic.com/fp/<hash>-p_e.jpg",
+      "detail_url": "https://www.zillow.com/homedetails/..._zpid/"
+    }
+  ]
 }
 ```
 
-- `zip`: 5-digit string.
-- `monthlyRent`: whole dollars, 300 to 20000.
-- `filters`: always present, often `{}`. Every key is optional:
+What the site uses: `id`, `address`, `zipcode`, `price`, `predicted_price`, `delta_pct`, `tier` (shown as "Good buy", "Room to negotiate", "Overpriced"), `beds`, `baths`, `sqft_living`, `photo`, `detail_url`. Results are shown in the order returned. No results: `{"results": [], "message": "..."}` with status 200.
 
-| Filter | Meaning |
-| --- | --- |
-| `minBeds` | Integer 1 to 10 |
-| `minBaths` | Number 1 to 10 |
-| `minSqft` | Living area, integer |
-| `minLotSqft` | Lot size, integer. The chat sets 5000 for "a yard", 8000 for "a big yard" |
-| `homeTypes` | Any of `SINGLE_FAMILY`, `TOWNHOUSE`, `CONDO`, `MULTI_FAMILY`, `MANUFACTURED` |
+`id` is the Zillow zpid. The site looks it up in `web/data/listings` (built from the same Houston CSV) to get every photo, coordinates for the map, lot size, home type, Zestimate, rent estimate and tax value. Homes not in that data still show, with the API's single photo and no map.
 
-Apply the filters before you pick the top homes. The website drops any returned home that breaks a filter, so ignoring them means the user sees fewer results, not wrong ones. A home with an unknown value (`null` beds, for example) counts as not matching that filter.
+Search filters from the chat (bedrooms, bathrooms, size, lot, home type) are applied by the website after the response, so the site asks for 100 results to leave enough after filtering.
 
-Response `200`:
+## Predict
 
-```json
-{ "homes": [ Listing, ... ] }
-```
-
-- Up to 100 homes. Order matters: the website shows them in the order you return them.
-- Return `{ "homes": [] }` when nothing fits. Do not return 404 for this.
-
-## GET /listings/{id}
-
-Returns one `Listing`, or `404` if the id is unknown. The detail page calls this when someone opens a shared link, so it has to work for any id `/recommend` has returned.
-
-## Listing
+`POST $MODEL_PREDICT_URL`
 
 ```json
 {
-  "id": "123182286",
-  "address": { "street": "9807 Dawson Hill Ln", "city": "Houston", "state": "TX", "zip": "77044" },
-  "price": 240000,
-  "beds": 3,
-  "baths": 2,
-  "sqft": 1298,
-  "lotSqft": 4783,
-  "yearBuilt": 2016,
-  "homeType": "SINGLE_FAMILY",
-  "location": { "lat": 29.88, "lng": -95.18 },
-  "photos": ["https://photos.zillowstatic.com/fp/<hash>-cc_ft_1536.jpg"],
-  "hoaMonthly": 45,
-  "estimates": { "value": 238600, "rent": 1950, "taxAssessed": 228250 },
-  "model": {
-    "predictedPrice": 236000,
-    "score": 0.82,
-    "reasons": ["About $82 a month less than your rent"]
-  },
-  "daysOnMarket": 4,
-  "broker": "RE/MAX Fine Properties",
-  "sourceUrl": "https://www.zillow.com/homedetails/..."
+  "beds": 3, "baths": 2, "sqft_living": 1800, "home_type": "SINGLE_FAMILY",
+  "lat": 29.76, "lon": -95.37, "rent_zestimate": 2000, "tax_assessed": 280000
 }
 ```
 
-| Field | Rules |
-| --- | --- |
-| `id` | Letters, digits, `_` or `-`, max 64 chars. Stable across calls. |
-| `price` | List price in dollars, > 0. |
-| `beds`, `baths`, `sqft`, `lotSqft` | Number or `null`. |
-| `yearBuilt` | Integer or `null`. Optional. |
-| `homeType` | `SINGLE_FAMILY`, `TOWNHOUSE`, `CONDO`, `MULTI_FAMILY`, `MANUFACTURED`. Other strings show as-is. |
-| `location` | `{lat, lng}` or `null`. Used for the map. |
-| `photos` | `https://` URLs only, max 60. First photo is the cover. Zillow URLs get resized automatically. |
-| `hoaMonthly` | Dollars or `null` (unknown). Optional. |
-| `estimates.value` | Market value estimate (e.g. Zestimate) or `null`. |
-| `estimates.rent` | Rent estimate for this home or `null`. |
-| `estimates.taxAssessed` | County appraised value or `null`. |
-| `model` | Optional. `predictedPrice` is your model's fair-price estimate, shown on the "Is the price fair?" chart. `score` is 0 to 1. `reasons` is up to 6 short plain-text lines shown under "Why it was picked". |
-| `daysOnMarket`, `broker` | Or `null`. |
-| `sourceUrl` | `https://` link to the original listing, or `null`. |
+Response: `{"predicted_price": 318776, "low_estimate": 207247, "high_estimate": 430305}`
 
-## How the website prices a home
+Called for each home page (cached for an hour). The site leaves out fields it doesn't know instead of sending `null`, because the model gives very different answers for `null`. If the call fails, the page still renders without the model estimate.
 
-The model decides which homes to show. The website computes the monthly cost itself (`web/src/lib/finance.ts`) so users can change down payment, rate and term:
+## Requests for the model team
 
-- Principal and interest: standard 30/20/15-year amortization. Defaults are 5% down and 6.25%.
-- Property tax: 2.1% of price per year.
-- Insurance: 0.9% of price per year.
-- PMI: 0.6% of the loan per year when down payment is under 20%.
-- HOA: `hoaMonthly`, or $0 if unknown.
-
-If the model filters homes by affordability, use the same defaults so the site and the model agree on what "fits".
+- **Budget on the full monthly cost, not principal and interest only.** `budget` is set so `monthly_pi` matches the rent, but property tax and insurance add about 40% in Houston (`monthly_total` is around $3,000 for a $2,200 rent). Most results show as "a stretch" on the site for that reason.
+- **Accept filters** (`min_beds`, `min_baths`, `min_sqft`, `min_lot_sqft`, `home_types`) so filtering happens before the top results are picked.
+- **Return `lat`, `lon` and `home_type`** in each result, so homes missing from the site's copy of the data can still get a map.
 
 ## Running without the model
 
-Leave `MODEL_API_URL` unset and the site uses the demo model in `web/src/lib/model/mock.ts`: listings from `web/data/mock-listings.json` whose default monthly cost is at most 1.15x rent, closest to the rent first, falling back to neighboring zips. Rebuild that file from the Houston CSV with:
+Leave both env vars unset and the site uses a stand-in (`web/src/lib/model/mock.ts`): listings in or near the zip whose estimated monthly cost is at most 1.15x the rent, closest to the rent first.
+
+Rebuild the listing data from the CSV with:
 
 ```sh
-cd web && python3 -I scripts/build-mock-listings.py /path/to/houston_housing_2024.csv
+cd web && python3 -I scripts/build-listings.py /path/to/houston_housing_2024.csv
 ```

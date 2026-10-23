@@ -8,11 +8,12 @@ import { Suspense } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { Gallery } from "@/components/gallery";
+import { TierBadge } from "@/components/tier-badge";
 import { ValueScale } from "@/components/value-scale";
 import { cachedListing, cachedRecommendations } from "@/lib/data";
 import { describeHome, descriptionFacts } from "@/lib/describe";
 import { geminiConfigured } from "@/lib/gemini";
-import { bathsLabel, count, money, photoAt } from "@/lib/format";
+import { bathsLabel, compactMoney, count, money, photoAt } from "@/lib/format";
 import { homeTypeLabel, parseSearch, searchQuery, type Listing, type Search } from "@/lib/listing";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 
@@ -36,11 +37,12 @@ async function HomeDetail({
   searchParams: PageProps<"/homes/[id]">["searchParams"];
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const home = await cachedListing(id);
-  if (!home) notFound();
+  const listing = await cachedListing(id);
+  if (!listing) notFound();
 
   const parsed = parseSearch(sp);
   const search = parsed.success ? parsed.data : null;
+  const home = search ? await withSearchContext(listing, search) : listing;
   const rent = search?.rent ?? home.estimates.rent ?? null;
   const address = `${home.address.street}, ${home.address.city}, ${home.address.state} ${home.address.zip}`;
   const facts = [
@@ -112,6 +114,7 @@ async function HomeDetail({
                 {home.daysOnMarket != null && <Fact label="Days listed" value={String(home.daysOnMarket)} />}
                 <Fact label="HOA" value={home.hoaMonthly != null ? `${money(home.hoaMonthly)}/mo` : "Not listed"} />
               </dl>
+              {home.model?.tier && <TierBadge tier={home.model.tier} />}
               {home.model && home.model.reasons.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Why it was picked</p>
@@ -185,6 +188,22 @@ async function HomeDetail({
       </div>
     </article>
   );
+}
+
+/** The verdict and reasons come from the recommend call, so reuse them when the visitor came from a search. */
+async function withSearchContext(home: Listing, search: Search): Promise<Listing> {
+  const homes = await cachedRecommendations(search).catch(() => [] as Listing[]);
+  const match = homes.find((h) => h.id === home.id)?.model;
+  if (!match) return home;
+  return {
+    ...home,
+    model: {
+      ...match,
+      predictedPrice: match.predictedPrice ?? home.model?.predictedPrice ?? null,
+      low: home.model?.low ?? match.low,
+      high: home.model?.high ?? match.high,
+    },
+  };
 }
 
 async function HomeNav({ id, search }: { id: string; search: Search }) {
@@ -274,7 +293,10 @@ function PriceCheck({ home }: { home: Listing }) {
       key: "model",
       label: "Model estimate",
       value: home.model.predictedPrice,
-      note: "Our pricing model",
+      note:
+        home.model.low != null && home.model.high != null
+          ? `Our pricing model, likely ${compactMoney(home.model.low)} to ${compactMoney(home.model.high)}`
+          : "Our pricing model",
     },
     home.estimates.value != null &&
       home.estimates.value !== home.model?.predictedPrice && {

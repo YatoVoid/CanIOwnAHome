@@ -29,8 +29,11 @@ export const ListingSchema = z.object({
   model: z
     .object({
       predictedPrice: money.nullable(),
-      score: z.number().min(0).max(1).nullable(),
-      reasons: z.array(z.string().max(300)).max(6),
+      low: money.nullable().default(null),
+      high: money.nullable().default(null),
+      tier: z.enum(["GOOD_BUY", "NEGOTIATE", "OVERPRICED"]).nullable().default(null),
+      score: z.number().min(0).max(1).nullable().default(null),
+      reasons: z.array(z.string().max(300)).max(6).default([]),
     })
     .nullable()
     .default(null),
@@ -40,10 +43,6 @@ export const ListingSchema = z.object({
 });
 
 export type Listing = z.infer<typeof ListingSchema>;
-
-export const RecommendResponseSchema = z.object({
-  homes: z.array(ListingSchema).max(100),
-});
 
 export const HOME_TYPES = ["SINGLE_FAMILY", "TOWNHOUSE", "CONDO", "MULTI_FAMILY", "MANUFACTURED"] as const;
 export type HomeType = (typeof HOME_TYPES)[number];
@@ -128,6 +127,14 @@ export function describeFilters(f: Filters) {
   if (f.homeTypes?.length) parts.push(f.homeTypes.map(homeTypeLabel).join(" or "));
   return parts;
 }
+
+export type Tier = NonNullable<NonNullable<Listing["model"]>["tier"]>;
+
+export const TIER_LABELS: Record<Tier, string> = {
+  GOOD_BUY: "Good buy",
+  NEGOTIATE: "Room to negotiate",
+  OVERPRICED: "Overpriced",
+};
 
 export function homeTypeLabel(type: string) {
   const labels: Record<string, string> = {

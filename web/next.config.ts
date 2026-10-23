@@ -16,8 +16,8 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "64kb" },
   },
   outputFileTracingIncludes: {
-    "/homes": ["./data/mock-listings.json"],
-    "/homes/[id]": ["./data/mock-listings.json"],
+    "/homes": ["./data/listings/**"],
+    "/homes/[id]": ["./data/listings/**"],
   },
   turbopack: {
     rules: {

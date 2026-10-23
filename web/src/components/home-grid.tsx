@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAssumptions } from "@/components/assumptions";
 import { FitBadge } from "@/components/fit-badge";
+import { TierBadge } from "@/components/tier-badge";
 import { costBreakdown } from "@/lib/finance";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
 import { homeTypeLabel, type Listing } from "@/lib/listing";
@@ -35,6 +36,7 @@ export function HomeGrid({ homes, query, zip, rent }: { homes: Listing[]; query:
               <span className="absolute left-3 top-3 rounded bg-navy/85 px-2 py-0.5 text-xs font-semibold tabular-nums text-on-navy">
                 {String(i + 1).padStart(2, "0")}
               </span>
+              {home.model?.tier && <TierBadge tier={home.model.tier} className="absolute right-3 top-3" />}
             </div>
             <div className="mt-3 flex items-baseline justify-between gap-3">
               <p className="figure text-3xl">
