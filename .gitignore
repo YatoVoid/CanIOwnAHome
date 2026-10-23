@@ -7,3 +7,4 @@ __pycache__/
 .venv/
 # raw datasets stay local; share them outside git
 *.csv
+.vercel
