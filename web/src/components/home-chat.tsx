@@ -223,10 +223,11 @@ export function HomeChat() {
         <div className="mt-6 space-y-3">
           {result?.search ? (
             <Link
+              key={searchQuery(result.search)}
               href={`/homes?${searchQuery(result.search)}`}
-              className="flex items-center justify-center gap-2 rounded-md bg-navy px-4 py-3 font-semibold text-on-navy"
+              className="nudge group flex items-center justify-center gap-2 rounded-md bg-navy px-4 py-3 font-semibold text-on-navy"
             >
-              Show matching homes <ArrowRight className="size-4" aria-hidden />
+              Show matching homes <ArrowRight className="nudge-arrow size-4 transition-transform" aria-hidden />
             </Link>
           ) : (
             <p className="text-sm text-ink-3">The search button shows up once these three are filled in.</p>

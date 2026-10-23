@@ -121,6 +121,45 @@ body {
   color: var(--ink);
 }
 
+/* Draws the eye to a call to action when it first appears, then settles. */
+.nudge {
+  animation:
+    nudge-in 320ms ease-out,
+    nudge-ring 1.6s ease-out 400ms 3;
+}
+.nudge-arrow {
+  animation: nudge-arrow 1.6s ease-in-out 400ms 3;
+}
+.nudge:hover .nudge-arrow {
+  transform: translateX(3px);
+}
+
+@keyframes nudge-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+@keyframes nudge-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 65%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+@keyframes nudge-arrow {
+  0%,
+  60%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
