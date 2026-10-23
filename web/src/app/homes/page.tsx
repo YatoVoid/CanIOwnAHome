@@ -22,17 +22,21 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
   const parsed = parseSearch(params);
 
   if (!parsed.success) {
-    const errors: { zip?: string; rent?: string } = {};
+    type Key = "income" | "rent" | "savings" | "debts" | "zip";
+    const errors: Partial<Record<Key, string>> = {};
     for (const issue of parsed.error.issues) {
-      const key = issue.path[0] as "zip" | "rent";
+      const key = issue.path[0] as Key;
       errors[key] ??= issue.message;
     }
-    const raw = (k: string) => (typeof params[k] === "string" ? (params[k] as string).slice(0, 10) : "");
+    const raw = (k: string) => (typeof params[k] === "string" ? (params[k] as string).slice(0, 12) : "");
     return (
       <section className="py-16">
         <h1 className="display text-4xl">Check those numbers</h1>
         <div className="mt-8">
-          <SearchForm zip={raw("zip")} rent={raw("rent")} errors={errors} />
+          <SearchForm
+            values={{ income: raw("income"), rent: raw("rent"), savings: raw("savings"), debts: raw("debts"), zip: raw("zip") }}
+            errors={errors}
+          />
         </div>
       </section>
     );
@@ -40,8 +44,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
 
   const search = parsed.data;
   const keep = Object.fromEntries(new URLSearchParams(searchQuery(search)));
-  delete keep.zip;
-  delete keep.rent;
+  for (const k of ["zip", "rent", "income", "savings", "debts"]) delete keep[k];
   const hasFilters = describeFilters(search.filters).length > 0;
 
   return (
@@ -51,7 +54,11 @@ async function Results({ searchParams }: { searchParams: PageProps<"/homes">["se
       form={
         <>
           <div className="mt-6">
-            <SearchForm zip={search.zip} rent={search.rent} size="bar" keep={keep} />
+            <SearchForm
+              values={{ income: search.income, rent: search.rent, savings: search.savings, debts: search.debts, zip: search.zip }}
+              size="bar"
+              keep={keep}
+            />
           </div>
           {hasFilters && <FilterChips search={search} />}
         </>

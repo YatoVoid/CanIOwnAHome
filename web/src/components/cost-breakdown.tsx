@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AssumptionControls, useAssumptions } from "@/components/assumptions";
 import { FitBadge } from "@/components/fit-badge";
-import { costBreakdown, equityAfterYears } from "@/lib/finance";
+import { costBreakdown, equityAfterYears, withSavings } from "@/lib/finance";
 import { money } from "@/lib/format";
 
 type Part = { key: string; label: string; value: number; color: string; note: string };
@@ -13,13 +13,17 @@ export function CostBreakdown({
   hoaMonthly,
   rent,
   rentLabel = "Your budget",
+  savings,
 }: {
   price: number;
   hoaMonthly: number | null;
   rent: number;
   rentLabel?: string;
+  /** When known, savings are the down payment. */
+  savings?: number;
 }) {
-  const { assumptions: a } = useAssumptions();
+  const { assumptions } = useAssumptions();
+  const a = savings !== undefined ? withSavings(price, assumptions, savings) : assumptions;
   const c = costBreakdown(price, hoaMonthly, a);
   const [active, setActive] = useState<string | null>(null);
 
@@ -70,12 +74,12 @@ export function CostBreakdown({
 
   return (
     <div className="space-y-10">
-      <AssumptionControls />
+      <AssumptionControls savings={savings} />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <figure className="rounded-xl border border-line bg-card p-5 sm:p-6">
           <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-semibold">Owning vs. your monthly budget</span>
+            <span className="font-semibold">Owning vs. {rentLabel.toLowerCase()}, per month</span>
             <FitBadge monthly={c.total} rent={rent} />
           </figcaption>
 
@@ -162,7 +166,7 @@ export function CostBreakdown({
             <p className="figure mt-2 text-4xl text-accent">{money(c.cashToClose)}</p>
             <dl className="mt-3 space-y-1 text-sm opacity-90">
               <div className="flex justify-between gap-4">
-                <dt>Down payment ({a.downPaymentPct}%)</dt>
+                <dt>Down payment ({Math.round(a.downPaymentPct * 10) / 10}%)</dt>
                 <dd className="tabular-nums">{money(c.downPayment)}</dd>
               </div>
               <div className="flex justify-between gap-4">

@@ -2,9 +2,9 @@ import { rentFit } from "@/lib/finance";
 import { signedMoney } from "@/lib/format";
 
 const STYLES = {
-  under: { cls: "bg-good-bg text-good", label: "Under budget" },
-  near: { cls: "bg-near-bg text-near", label: "A bit over budget" },
-  stretch: { cls: "bg-over-bg text-over", label: "A stretch" },
+  under: { cls: "bg-good-bg text-good", label: "Less than your rent" },
+  near: { cls: "bg-near-bg text-near", label: "A bit more than rent" },
+  stretch: { cls: "bg-over-bg text-over", label: "More than your rent" },
 };
 
 export function FitBadge({ monthly, rent }: { monthly: number; rent: number }) {

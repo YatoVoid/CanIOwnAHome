@@ -17,7 +17,7 @@ const instrument = Instrument_Sans({
 
 export const metadata: Metadata = {
   title: { default: "Can I Own a Home?", template: "%s · Can I Own a Home?" },
-  description: "Enter a monthly budget, with or without a zip code. See Houston homes you could own, whether the price is fair, and whether the area floods.",
+  description: "Enter your income, rent and savings. See what you can afford in Houston, which homes are fairly priced, and whether a cheap home is cheap because it floods.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

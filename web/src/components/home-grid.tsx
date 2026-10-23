@@ -4,9 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAssumptions } from "@/components/assumptions";
 import { FitBadge } from "@/components/fit-badge";
-import { OursChips } from "@/components/ours-badge";
+import { FloodBadge, OursChips } from "@/components/ours-badge";
 import { DealBadge, TierBadge } from "@/components/tier-badge";
-import { costBreakdown } from "@/lib/finance";
+import { costBreakdown, withSavings } from "@/lib/finance";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
 import { homeTypeLabel, type Listing } from "@/lib/listing";
 
@@ -15,16 +15,22 @@ export function HomeGrid({
   query,
   zip,
   rent,
+  savings,
   startAt = 1,
 }: {
   homes: Listing[];
   query: string;
   zip?: string;
   rent: number;
+  /** When known, savings are the down payment, so each home gets its own down payment percentage. */
+  savings?: number;
   startAt?: number;
 }) {
   const { assumptions } = useAssumptions();
-  const rows = homes.map((home) => ({ home, monthly: costBreakdown(home.price, home.hoaMonthly, assumptions).total }));
+  const rows = homes.map((home) => ({
+    home,
+    monthly: costBreakdown(home.price, home.hoaMonthly, savings !== undefined ? withSavings(home.price, assumptions, savings) : assumptions).total,
+  }));
 
   return (
     <ol className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,6 +71,7 @@ export function HomeGrid({
             <div className="mt-1.5">
               <FitBadge monthly={monthly} rent={rent} />
             </div>
+            <FloodBadge ours={home.ours} />
             <OursChips ours={home.ours} />
             <p className="mt-2 font-medium group-hover:underline group-hover:underline-offset-4">
               {home.address.street}

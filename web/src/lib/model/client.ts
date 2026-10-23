@@ -2,7 +2,7 @@ import { z } from "zod";
 import { compactMoney } from "@/lib/format";
 import { matchesFilters, type Listing, type Search } from "@/lib/listing";
 import { rowById, rowToListing } from "@/lib/listings-store";
-import { anywhereBestDeals, anywhereRecommend } from "./anywhere";
+import { ourBestDeals, ourRecommend } from "./ours-search";
 import { mockRecommend } from "./mock";
 import type { OfferInput, PredictInput } from "./predict-input";
 
@@ -157,8 +157,9 @@ export type RentToOwnResult = {
 };
 
 export async function rentToOwn(search: Search): Promise<RentToOwnResult> {
-  // No zip means "anywhere in Houston": the hosted model needs a zip, so rank with our own scores.
-  if (!search.zip) return { upstream: null, model: null, homes: anywhereRecommend(search) };
+  // Searches with income (the form's flow), or with no zip, are ranked with our trained price model and scores.
+  // Old links with only a zip and rent still go to the hosted model.
+  if (search.income !== undefined || !search.zip) return { upstream: null, model: null, homes: ourRecommend(search) };
   if (usingMockModel()) return { upstream: null, model: null, homes: mockRecommend(search) };
 
   const upstream = modelUrl("/rent-to-own");
@@ -297,7 +298,7 @@ const DEAL_CANDIDATES = 40;
  * sent a zip, and results are dropped unless it echoes that zip back.
  */
 export async function dealScore(search: Search): Promise<DealScoreResult> {
-  if (!search.zip) return { upstream: null, model: null, homes: anywhereBestDeals(search) };
+  if (search.income !== undefined || !search.zip) return { upstream: null, model: null, homes: ourBestDeals(search) };
   if (usingMockModel()) return { upstream: null, model: null, homes: [] };
 
   const upstream = modelUrl("/deal-score");

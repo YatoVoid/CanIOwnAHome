@@ -24,7 +24,10 @@ Read the whole conversation and fill in the JSON fields from what the user has s
 
 Fields:
 - zip: the 5-digit zip code they want to live in. Leave null if they have not named one or say anywhere or no preference: the search then covers all of Houston. If they name a Houston neighborhood instead of a zip, ask for the zip code or whether anywhere in Houston is fine.
-- monthlyRent: the monthly budget: what they pay in rent now, or the most they would spend a month, whole dollars.
+- monthlyRent: what they pay in rent each month now, whole dollars.
+- annualIncome: their yearly income before taxes, whole dollars. If they give a monthly or hourly figure, convert it to a yearly number only if the conversion is exact (monthly x 12); otherwise ask.
+- savings: cash they have saved for a down payment, whole dollars. Use 0 only if they say they have none.
+- monthlyDebts: what they pay each month on car loans, student loans and credit cards, whole dollars. Use 0 if they say none; null if not mentioned (this one is optional).
 - householdSize: how many people will live in the home.
 - minBeds: bedrooms needed. If they give a household but no bedroom count, assume two adults in a couple share a room and each other person gets their own room unless they say otherwise (a couple with 3 kids needs 4). If they say some people share rooms, count the rooms they describe. Never below 1.
 - minBaths: only if they ask for a bathroom count.
@@ -33,7 +36,7 @@ Fields:
 - homeTypes: only if they say what kind of home. Allowed values: ${HOME_TYPES.join(", ")}. A "house" means SINGLE_FAMILY. "No condos" means every allowed value except CONDO.
 - Use null (or an empty list for homeTypes) for anything not known.
 
-Required before a search can run: monthlyRent, and either householdSize or minBeds. The zip is optional. If they gave no zip, say you will search all of Houston and that they can add a zip to narrow it.
+Required before a search can run: annualIncome, monthlyRent, savings, and either householdSize or minBeds. monthlyDebts and the zip are optional. If they gave no zip, say you will search all of Houston and that they can add a zip to narrow it.
 
 The reply field is what you say back to the user:
 - If something required is missing, ask for it. Ask for at most two things per message, in plain words.
@@ -50,6 +53,9 @@ const RESPONSE_SCHEMA = {
     reply: { type: "string" },
     zip: { type: ["string", "null"] },
     monthlyRent: { type: ["number", "null"] },
+    annualIncome: { type: ["number", "null"] },
+    savings: { type: ["number", "null"] },
+    monthlyDebts: { type: ["number", "null"] },
     householdSize: { type: ["integer", "null"] },
     minBeds: { type: ["integer", "null"] },
     minBaths: { type: ["number", "null"] },
@@ -57,13 +63,16 @@ const RESPONSE_SCHEMA = {
     minLotSqft: { type: ["integer", "null"] },
     homeTypes: { type: "array", items: { type: "string", enum: [...HOME_TYPES] } },
   },
-  required: ["reply", "zip", "monthlyRent", "householdSize", "minBeds", "minBaths", "minSqft", "minLotSqft", "homeTypes"],
+  required: ["reply", "zip", "monthlyRent", "annualIncome", "savings", "monthlyDebts", "householdSize", "minBeds", "minBaths", "minSqft", "minLotSqft", "homeTypes"],
 };
 
 const ExtractionSchema = z.object({
   reply: z.string().min(1).max(1200),
   zip: z.string().nullable().catch(null),
   monthlyRent: z.number().nullable().catch(null),
+  annualIncome: z.number().nullable().catch(null),
+  savings: z.number().nullable().catch(null),
+  monthlyDebts: z.number().nullable().catch(null),
   householdSize: z.number().int().min(1).max(20).nullable().catch(null),
   minBeds: z.number().nullable().catch(null),
   minBaths: z.number().nullable().catch(null),
@@ -76,9 +85,16 @@ export type Extraction = z.infer<typeof ExtractionSchema>;
 
 export type ChatResult = {
   reply: string;
-  /** Set once the budget and a bedroom need are known and valid. The zip is optional (none = all of Houston). */
+  /** Set once income, rent, savings and a bedroom need are known and valid. The zip and debts are optional. */
   search: Search | null;
-  known: { zip: string | null; rent: number | null; householdSize: number | null; filters: Filters };
+  known: {
+    zip: string | null;
+    rent: number | null;
+    income: number | null;
+    savings: number | null;
+    householdSize: number | null;
+    filters: Filters;
+  };
 };
 
 function pick<T>(schema: z.ZodType<T>, value: unknown): T | undefined {
@@ -105,12 +121,16 @@ export function toChatResult(x: Extraction): ChatResult {
 
   const zip = pick(SearchSchema.shape.zip, x.zip) ?? null;
   const rent = pick(SearchSchema.shape.rent, x.monthlyRent != null ? Math.round(x.monthlyRent) : null) ?? null;
-  const ready = rent !== null && filters.minBeds !== undefined;
+  const whole = (v: number | null) => (v != null ? Math.round(v) : null);
+  const income = pick(SearchSchema.shape.income, whole(x.annualIncome)) ?? null;
+  const savings = pick(SearchSchema.shape.savings, whole(x.savings)) ?? null;
+  const debts = pick(SearchSchema.shape.debts, whole(x.monthlyDebts)) ?? null;
+  const ready = rent !== null && income !== null && savings !== null && filters.minBeds !== undefined;
 
   return {
     reply: x.reply.trim(),
-    search: ready ? { ...(zip ? { zip } : {}), rent, filters } : null,
-    known: { zip, rent, householdSize: x.householdSize, filters },
+    search: ready ? { ...(zip ? { zip } : {}), rent, income, savings, ...(debts ? { debts } : {}), filters } : null,
+    known: { zip, rent, income, savings, householdSize: x.householdSize, filters },
   };
 }
 

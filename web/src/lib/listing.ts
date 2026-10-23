@@ -73,13 +73,36 @@ export type Filters = z.infer<typeof FiltersSchema>;
 export const SearchSchema = z.object({
   // Optional: no zip means "anywhere in Houston".
   zip: z.string().trim().regex(/^\d{5}$/, "Enter a 5-digit zip code, or leave it blank to search all of Houston").optional(),
-  // Called `rent` in URLs and APIs, but it is the monthly housing budget: today's rent, or the most the person would spend.
+  // What the person pays in rent each month. (In old links with no income, it doubles as the monthly budget.)
   rent: z.coerce
-    .number({ error: "Enter your monthly budget" })
-    .int("Round your budget to whole dollars")
-    .min(300, "Budget must be at least $300")
-    .max(20_000, "Budget must be under $20,000"),
+    .number({ error: "Enter what you pay in rent each month" })
+    .int("Round your rent to whole dollars")
+    .min(300, "Rent must be at least $300")
+    .max(20_000, "Rent must be under $20,000"),
+  // Yearly income before taxes, cash savings (used as the down payment) and monthly debts. With income, the site
+  // works out what the person can afford; without it, it falls back to treating rent as the budget.
+  income: z.coerce
+    .number({ error: "Enter your yearly income before taxes" })
+    .int("Round your income to whole dollars")
+    .min(12_000, "Income must be at least $12,000 a year")
+    .max(2_000_000, "Income must be under $2,000,000 a year")
+    .optional(),
+  savings: z.coerce
+    .number({ error: "Enter your savings (0 if none)" })
+    .int("Round your savings to whole dollars")
+    .min(0, "Savings cannot be negative")
+    .max(5_000_000, "Savings must be under $5,000,000")
+    .optional(),
+  debts: z.coerce
+    .number({ error: "Enter your monthly debts (0 if none)" })
+    .int("Round your debts to whole dollars")
+    .min(0, "Debts cannot be negative")
+    .max(50_000, "Debts must be under $50,000 a month")
+    .optional(),
 });
+
+/** The full search from the form: income and savings are required (debts default to 0). */
+const FullSearchSchema = SearchSchema.extend({ income: SearchSchema.shape.income.unwrap(), savings: SearchSchema.shape.savings.unwrap() });
 
 export type Search = z.infer<typeof SearchSchema> & { filters: Filters };
 
@@ -105,19 +128,29 @@ export function parseFilters(params: Params): Filters {
   return filters;
 }
 
+const cleanNumber = (v: string | string[] | undefined) => first(v)?.replace(/[$,\s]/g, "") || undefined;
+
 export function parseSearch(params: Params) {
-  const base = SearchSchema.safeParse({
+  // If the form sent income or savings (even blank), both are required. Old links with neither still work.
+  const fromForm = params.income !== undefined || params.savings !== undefined;
+  const base = (fromForm ? FullSearchSchema : SearchSchema).safeParse({
     zip: first(params.zip)?.trim() || undefined,
     rent: (first(params.rent) ?? "").replace(/[$,\s]/g, ""),
+    income: cleanNumber(params.income),
+    savings: cleanNumber(params.savings),
+    debts: cleanNumber(params.debts),
   });
   if (!base.success) return base;
   return { success: true as const, data: { ...base.data, filters: parseFilters(params) } satisfies Search };
 }
 
-export function searchQuery({ zip, rent, filters }: Search) {
+export function searchQuery({ zip, rent, income, savings, debts, filters }: Search) {
   const q = new URLSearchParams();
   if (zip) q.set("zip", zip);
   q.set("rent", String(rent));
+  if (income !== undefined) q.set("income", String(income));
+  if (savings !== undefined) q.set("savings", String(savings));
+  if (debts) q.set("debts", String(debts));
   for (const [param, key] of Object.entries(FILTER_PARAMS)) {
     const v = filters[key];
     if (v !== undefined) q.set(param, String(v));

@@ -47,7 +47,7 @@ export function BestDeals({ search }: { search: Search }) {
         Some of these cost more than your budget; the monthly figure on each card shows by how much.
       </p>
       <div className="mt-8">
-        <HomeGrid homes={homes} query={query} zip={search.zip} rent={search.rent} />
+        <HomeGrid homes={homes} query={query} zip={search.zip} rent={search.rent} savings={search.savings} />
       </div>
     </section>
   );

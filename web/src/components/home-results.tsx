@@ -1,6 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { FloodSummary } from "@/components/flood-summary";
+import { hideHighFlood } from "@/lib/flood";
+import { AffordabilityCard } from "@/components/affordability-card";
 import { AssumptionControls } from "@/components/assumptions";
 import { BestDeals } from "@/components/best-deals";
 import { HomeGrid } from "@/components/home-grid";
@@ -12,21 +15,28 @@ import { useAsync } from "@/lib/use-async";
 export function HomeResults({ search, hasFilters, form }: { search: Search; hasFilters: boolean; form: ReactNode }) {
   const query = searchQuery(search);
   const { state, retry } = useAsync(() => fetchRentToOwn(search), query);
-  const { zip, rent } = search;
+  const { zip, rent, savings } = search;
+  const withIncome = search.income !== undefined;
+  const [hideHigh, setHideHigh] = useState(false);
 
   const heading =
     state.status === "loading" ? (
-      <>Finding homes for around {money(rent)} a month…</>
+      <>{withIncome ? "Finding homes you can afford…" : <>Finding homes for around {money(rent)} a month…</>}</>
     ) : state.status === "error" ? (
       <>We couldn&apos;t load homes right now</>
     ) : state.data.homes.length > 0 ? (
-      <>
-        {state.data.homes.length} homes you could own for around{" "}
-        <span className="text-accent-ink">{money(rent)}</span> a month
-      </>
+      withIncome ? (
+        <>
+          {state.data.homes.length} homes you can afford, <span className="text-accent-ink">best value first</span>
+        </>
+      ) : (
+        <>
+          {state.data.homes.length} homes you could own for around <span className="text-accent-ink">{money(rent)}</span> a month
+        </>
+      )
     ) : (
       <>
-        No homes matched {money(rent)} a month {zip ? "here" : "in Houston"} yet
+        No homes matched {withIncome ? "your budget" : `${money(rent)} a month`} {zip ? "here" : "in Houston"} yet
       </>
     );
 
@@ -39,6 +49,8 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
         </h1>
         {form}
       </section>
+
+      <AffordabilityCard search={search} />
 
       {state.status === "loading" && (
         <div className="mt-10 grid animate-pulse gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
@@ -65,10 +77,22 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
         (state.data.homes.length > 0 ? (
           <>
             <section className="sticky top-0 z-10 -mx-4 border-b border-line bg-paper/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
-              <AssumptionControls compact />
+              <AssumptionControls compact savings={savings} />
             </section>
+            <FloodSummary homes={state.data.homes} hideHigh={hideHigh} onToggle={setHideHigh} />
             <section className="py-10">
-              <HomeGrid homes={state.data.homes} query={query} zip={zip} rent={rent} />
+              <p className="eyebrow mb-6">Step 2 and 3 · Homes in your budget, priced by our model</p>
+              {hideHigh && hideHighFlood(state.data.homes).length === 0 ? (
+                <p className="max-w-xl text-ink-2">Every home in this search is in a high flood-claim zip. Untick the box above to see them.</p>
+              ) : (
+                <HomeGrid
+                  homes={hideHigh ? hideHighFlood(state.data.homes) : state.data.homes}
+                  query={query}
+                  zip={zip}
+                  rent={rent}
+                  savings={savings}
+                />
+              )}
             </section>
           </>
         ) : (
@@ -85,14 +109,16 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
         <BestDeals search={search} />
       )}
 
-      {state.status === "done" && !zip && (
+      {state.status === "done" && (withIncome || !zip) && (
         <p className="text-sm text-ink-3">
-          Houston-wide results are ranked with our fair-price model: homes whose full monthly cost fits your budget, best
-          value first, at most three per zip code so one neighborhood does not crowd out the rest. Add a zip code to search one area.
+          Homes are ranked with our trained price model: only homes whose full monthly cost fits your budget, with the best
+          value first. &quot;Priced below fair value&quot; means all three of our models put the asking price at least 10% below
+          what similar homes list for; it cannot see condition. Flood warnings come from flood-insurance claims in the zip
+          code.{!zip && " With no zip code, at most three homes per zip are shown so one neighborhood does not crowd out the rest."}
         </p>
       )}
 
-      {state.status === "done" && zip && state.data.upstream === null && (
+      {state.status === "done" && !withIncome && zip && state.data.upstream === null && (
         <p className="text-sm text-ink-3">
           Results come from the demo model (affordability filter over listing data). The trained model is not connected.
         </p>

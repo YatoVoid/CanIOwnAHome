@@ -83,9 +83,15 @@ async function HomeDetail({
             {rent != null && (
               <div>
                 <p className="text-xs uppercase tracking-wider text-white/70">
-                  {search ? "Your budget" : "Typical rent here"}
+                  {search ? (search.income !== undefined ? "Your rent" : "Your budget") : "Typical rent here"}
                 </p>
                 <p className="figure text-3xl text-white">{money(rent)}</p>
+              </div>
+            )}
+            {home.ours?.floodLevel && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-white/70">Flood risk (zip)</p>
+                <p className="figure text-3xl text-white">{home.ours.floodLevel}</p>
               </div>
             )}
           </div>
@@ -112,6 +118,12 @@ async function HomeDetail({
           </div>
         </Section>
 
+        {home.ours && (
+          <Section eyebrow="Fair price and flooding" title="Is it cheap, or cheap for a reason?">
+            <OursCheck ours={home.ours} price={home.price} />
+          </Section>
+        )}
+
         <Section eyebrow="About" title="What it's like">
           <HomeDescription home={home} />
         </Section>
@@ -122,14 +134,9 @@ async function HomeDetail({
               price={home.price}
               hoaMonthly={home.hoaMonthly}
               rent={rent}
-              rentLabel={search ? "Your budget" : "Typical rent"}
+              rentLabel={search ? (search.income !== undefined ? "Your rent" : "Your budget") : "Typical rent"}
+              savings={search?.savings}
             />
-          </Section>
-        )}
-
-        {home.ours && (
-          <Section eyebrow="Fair price and flooding" title="Is it cheap, or cheap for a reason?">
-            <OursCheck ours={home.ours} price={home.price} />
           </Section>
         )}
 

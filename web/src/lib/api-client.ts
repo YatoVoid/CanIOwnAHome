@@ -40,7 +40,14 @@ export function fetchRentToOwn(search: Search) {
   return once(`rent-to-own:${searchQuery(search)}`, () =>
     call<RentToOwnResult>("/api/rent-to-own", {
       method: "POST",
-      body: JSON.stringify({ zip: search.zip, monthly_rent: search.rent, filters: search.filters }),
+      body: JSON.stringify({
+        zip: search.zip,
+        monthly_rent: search.rent,
+        income: search.income,
+        savings: search.savings,
+        debts: search.debts,
+        filters: search.filters,
+      }),
     }),
   );
 }
@@ -54,7 +61,14 @@ export function fetchDealScore(search: Search) {
   return once(`deal-score:${searchQuery(search)}`, () =>
     call<DealScoreResult>("/api/deal-score", {
       method: "POST",
-      body: JSON.stringify({ zip: search.zip, monthly_rent: search.rent, filters: search.filters }),
+      body: JSON.stringify({
+        zip: search.zip,
+        monthly_rent: search.rent,
+        income: search.income,
+        savings: search.savings,
+        debts: search.debts,
+        filters: search.filters,
+      }),
     }),
   );
 }

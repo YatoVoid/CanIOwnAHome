@@ -1,10 +1,11 @@
 import { HomeChat } from "@/components/home-chat";
+import { RatesPanel } from "@/components/rates-panel";
 import { SearchForm } from "@/components/search-form";
 
 const STEPS = [
-  ["Tell us your monthly budget", "What you pay in rent today, or the most you would spend. Add a zip code, or leave it blank to search all of Houston."],
-  ["We find the homes", "Homes whose full monthly cost (loan, tax and insurance) fits your budget, checked against a fair-price model and each area's flood-claim history."],
-  ["Walk through each one", "Photos, a plain description, the full monthly cost next to your budget, and whether it is cheap or cheap for a reason."],
+  ["Tell us three numbers", "Your yearly income, your rent, and your savings. Add a zip code, or leave it blank to search all of Houston."],
+  ["We work out what you can afford", "A simple formula turns your income, debts and savings into a monthly budget and a top price, using rates you can check."],
+  ["Our models pick and judge the homes", "A trained price model finds homes in your budget, says if each price is fair, and warns you if a cheap home sits in a flood-prone area."],
 ];
 
 export default function Home() {
@@ -27,6 +28,10 @@ export default function Home() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section aria-label="Rates and assumptions" className="border-t border-line py-10">
+        <RatesPanel />
       </section>
 
       <section aria-labelledby="chat-heading" className="border-t border-line py-16">

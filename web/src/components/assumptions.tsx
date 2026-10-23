@@ -60,7 +60,7 @@ export function useAssumptions() {
 
 const DOWN_PAYMENTS = [3.5, 5, 10, 20];
 
-export function AssumptionControls({ compact = false }: { compact?: boolean }) {
+export function AssumptionControls({ compact = false, savings }: { compact?: boolean; savings?: number }) {
   const { assumptions: a, update, reset } = useAssumptions();
   const [rateText, setRateText] = useState(String(a.ratePct));
 
@@ -80,7 +80,13 @@ export function AssumptionControls({ compact = false }: { compact?: boolean }) {
   return (
     <fieldset className={`flex flex-wrap items-end gap-x-6 gap-y-3 ${compact ? "text-sm" : ""}`}>
       <legend className="sr-only">Loan assumptions</legend>
-      <div>
+      {savings !== undefined && (
+        <div>
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-3">Down payment</span>
+          <span className="inline-block py-1 tabular-nums">${Math.round(savings).toLocaleString("en-US")} (your savings)</span>
+        </div>
+      )}
+      <div className={savings !== undefined ? "hidden" : ""}>
         <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-3" id="dp-label">
           Down payment
         </span>
