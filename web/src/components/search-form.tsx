@@ -1,0 +1,77 @@
+import { ArrowRight } from "lucide-react";
+
+type Props = {
+  zip?: string;
+  rent?: string | number;
+  errors?: { zip?: string; rent?: string };
+  size?: "hero" | "bar";
+};
+
+export function SearchForm({ zip = "", rent = "", errors = {}, size = "hero" }: Props) {
+  const hero = size === "hero";
+  const input = hero
+    ? "border-b-2 border-ink/40 bg-transparent text-center tabular-nums outline-none focus:border-accent"
+    : "field w-24 py-1 tabular-nums";
+
+  return (
+    <form action="/homes" method="get" noValidate className={hero ? "" : "text-base"}>
+      <p className={hero ? "display text-3xl leading-snug sm:text-5xl sm:leading-snug" : "flex flex-wrap items-center gap-2"}>
+        <span>I live in </span>
+        <label className="sr-only" htmlFor={`zip-${size}`}>
+          Zip code
+        </label>
+        <input
+          id={`zip-${size}`}
+          name="zip"
+          defaultValue={zip}
+          inputMode="numeric"
+          autoComplete="postal-code"
+          pattern="\d{5}"
+          maxLength={5}
+          required
+          placeholder="77007"
+          aria-invalid={Boolean(errors.zip)}
+          aria-describedby={errors.zip ? `zip-${size}-error` : undefined}
+          className={hero ? `${input} mx-1 w-[3.6em]` : input}
+        />
+        <span> and pay </span>
+        <span className={hero ? "whitespace-nowrap" : "inline-flex items-center gap-1"}>
+          <span aria-hidden>$</span>
+          <label className="sr-only" htmlFor={`rent-${size}`}>
+            Monthly rent in dollars
+          </label>
+          <input
+            id={`rent-${size}`}
+            name="rent"
+            defaultValue={rent}
+            inputMode="numeric"
+            required
+            placeholder="1,850"
+            aria-invalid={Boolean(errors.rent)}
+            aria-describedby={errors.rent ? `rent-${size}-error` : undefined}
+            className={hero ? `${input} mx-1 w-[3.6em]` : input}
+          />
+        </span>
+        <span> {hero ? "a month in rent." : "a month."}</span>
+        {!hero && (
+          <button type="submit" className="rounded-md bg-navy px-3 py-1.5 text-sm font-semibold text-on-navy">
+            Update
+          </button>
+        )}
+      </p>
+      <div aria-live="polite" className="mt-2 space-y-1 text-sm text-over">
+        {errors.zip && <p id={`zip-${size}-error`}>{errors.zip}</p>}
+        {errors.rent && <p id={`rent-${size}-error`}>{errors.rent}</p>}
+      </div>
+      {hero && (
+        <button
+          type="submit"
+          className="mt-8 inline-flex items-center gap-2 rounded-md bg-navy px-6 py-3 font-semibold text-on-navy transition-colors hover:bg-ink"
+        >
+          Show me homes I could own
+          <ArrowRight className="size-4" aria-hidden />
+        </button>
+      )}
+    </form>
+  );
+}

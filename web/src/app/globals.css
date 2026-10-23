@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --paper: #f6f4ef;
+  --card: #ffffff;
+  --sunk: #ece8df;
+  --line: #e1dbcf;
+  --ink: #1c2a42;
+  --ink-2: #4b5567;
+  --ink-3: #6b7280;
+  --accent: #c8963a;
+  --accent-ink: #8a5d14;
+  --navy: #1c2a42;
+  --on-navy: #f6f4ef;
+  --good: #1f6f4a;
+  --good-bg: #e3f1e9;
+  --near: #7a5300;
+  --near-bg: #f8edd5;
+  --over: #9b2c2c;
+  --over-bg: #f8e3e1;
+  --focus: #2a78d6;
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #111a29;
+    --card: #182335;
+    --sunk: #0c1320;
+    --line: #2a3850;
+    --ink: #f0ece3;
+    --ink-2: #c3c6cf;
+    --ink-3: #9aa1ae;
+    --accent: #d8a64a;
+    --accent-ink: #e2b663;
+    --navy: #2d3f5f;
+    --on-navy: #f0ece3;
+    --good: #7fd3a6;
+    --good-bg: #173326;
+    --near: #f0c46a;
+    --near-bg: #3a2e12;
+    --over: #f19b95;
+    --over-bg: #3d1d1d;
+    --focus: #6aa7f0;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-navy: var(--navy);
+  --color-on-navy: var(--on-navy);
+  --color-good: var(--good);
+  --color-good-bg: var(--good-bg);
+  --color-near: var(--near);
+  --color-near-bg: var(--near-bg);
+  --color-over: var(--over);
+  --color-over-bg: var(--over-bg);
+  --font-display: var(--font-newsreader);
+  --font-sans: var(--font-instrument);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-instrument), system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.display {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-weight: 450;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.figure {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.field {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
