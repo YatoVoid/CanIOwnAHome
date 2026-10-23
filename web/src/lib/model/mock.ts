@@ -44,7 +44,16 @@ export function mockRecommend({ zip, rent, filters }: Search): Listing[] {
       const home = rowToListing(r);
       return {
         ...home,
-        model: { predictedPrice: r.ze, low: null, high: null, tier: null, score: null, reasons },
+        model: {
+          predictedPrice: r.ze,
+          low: null,
+          high: null,
+          tier: null,
+          score: null,
+          dealScore: null,
+          dealRating: null,
+          reasons,
+        },
       };
     });
 }

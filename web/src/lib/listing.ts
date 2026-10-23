@@ -33,6 +33,8 @@ export const ListingSchema = z.object({
       high: money.nullable().default(null),
       tier: z.enum(["GOOD_BUY", "NEGOTIATE", "OVERPRICED"]).nullable().default(null),
       score: z.number().min(0).max(1).nullable().default(null),
+      dealScore: z.number().min(0).max(100).nullable().default(null),
+      dealRating: z.string().max(60).nullable().default(null),
       reasons: z.array(z.string().max(300)).max(6).default([]),
     })
     .nullable()

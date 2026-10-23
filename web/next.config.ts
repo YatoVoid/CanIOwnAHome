@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
     "/homes/[id]": ["./data/listings/**"],
     "/api/rent-to-own": ["./data/listings/**"],
     "/api/describe": ["./data/listings/**"],
+    "/api/deal-score": ["./data/listings/**"],
   },
   turbopack: {
     rules: {

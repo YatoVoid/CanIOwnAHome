@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getListing, ModelError, predict, recommendHomes, rentToOwn } from "./client";
-import { predictInput } from "./predict-input";
+import { cleanRating, dealScore, getListing, ModelError, offerPrice, predict, recommendHomes, rentToOwn } from "./client";
+import { offerInput, predictInput } from "./predict-input";
 import { mockRecommend } from "./mock";
 import { costBreakdown, DEFAULT_ASSUMPTIONS, NEAR_RENT_FACTOR } from "@/lib/finance";
 
@@ -128,6 +128,112 @@ describe("model API", () => {
     expect(await getListing("123")).toBeNull();
     expect(await getListing("../etc/passwd")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+const deal = (over: Record<string, unknown> = {}) => ({
+  address: "12343 Haroldson Forest Dr, Houston, TX 77044",
+  price: 259999.0,
+  predicted: 569466.8,
+  value_gap_pct: 54.3,
+  days_on_zillow: 245.0,
+  deal_score: 100.0,
+  rating: "Strong Buy \u2b50\u2b50\u2b50",
+  beds: 6.0,
+  baths: 3.0,
+  sqft_living: 3351.0,
+  zipcode: "77044",
+  detail_url: "https://www.zillow.com/homedetails/12343-Haroldson-Forest-Dr-Houston-TX-77044/28276795_zpid/",
+  ...over,
+});
+
+const offerResponse = (over: Record<string, unknown> = {}) => ({
+  asking_price: 259999,
+  model_estimate: 551316,
+  confidence_range: "$439,787 \u2013 $662,845",
+  value_verdict: "UNDERPRICED \u2014 model says this is a strong deal",
+  gap_vs_model_pct: 52.8,
+  days_on_market: 245.0,
+  negotiation_room: "12%",
+  offers: {
+    competitive: { amount: 259999, reason: "Full ask" },
+    fair: { amount: 551316, reason: "Model value" },
+    negotiated: { amount: 485158, reason: "Model value minus 12%" },
+  },
+  reasoning: { value: "x", timing: "y" },
+  ...over,
+});
+
+describe("deal-score and offer-price", () => {
+  beforeEach(() => {
+    process.env.MODEL_API_URL = "https://model.test";
+  });
+  afterEach(() => {
+    delete process.env.MODEL_API_URL;
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("sends only the zip as the area and reads the id from detail_url", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ area: "Zip 77044", results: [deal()] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const out = await dealScore({ zip: "77044", rent: 2200, filters: {} });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://model.test/deal-score");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ area: "77044", n_results: 40 });
+    expect(out.homes[0]).toMatchObject({ id: "28276795", price: 259999 });
+    expect(out.homes[0].model).toMatchObject({ dealScore: 100, dealRating: "Strong buy", predictedPrice: 569466.8 });
+    expect(out.homes[0].photos.length).toBeGreaterThan(1);
+  });
+
+  it("drops deal results when the endpoint answers for another area", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ area: "Galleria", results: [deal()] })));
+    expect((await dealScore({ zip: "77044", rent: 2200, filters: {} })).homes).toEqual([]);
+  });
+
+  it("skips deal results without a zpid and applies filters", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({ area: "Zip 77044", results: [deal({ detail_url: null }), deal({ beds: 2 }), deal()] }),
+      ),
+    );
+    const out = await dealScore({ zip: "77044", rent: 2200, filters: { minBeds: 5 } });
+    expect(out.homes.every((h) => h.id === "28276795" && (h.beds ?? 0) >= 5)).toBe(true);
+  });
+
+  it("sends exactly the documented offer fields and returns the parsed offer", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(offerResponse()));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const home = await getListing("28276795");
+    const input = offerInput(home!)!;
+    const out = await offerPrice(input);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://model.test/offer-price");
+    expect(Object.keys(JSON.parse(fetchMock.mock.calls[0][1].body)).sort()).toEqual(
+      ["asking_price", "baths", "beds", "days_on_zillow", "home_type", "lat", "lon", "sqft_living"].sort(),
+    );
+    expect(out.offer?.offers.negotiated.amount).toBe(485158);
+  });
+
+  it("rejects an offer priced for a different asking price", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(offerResponse({ asking_price: 350000 }))));
+    const home = await getListing("28276795");
+    await expect(offerPrice(offerInput(home!)!)).rejects.toBeInstanceOf(ModelError);
+  });
+
+  it("won't build an offer request when a required fact is missing", async () => {
+    const home = await getListing("28276795");
+    expect(offerInput({ ...home!, sqft: null })).toBeNull();
+    expect(offerInput({ ...home!, location: null })).toBeNull();
+  });
+
+  it("cleans the star rating", () => {
+    expect(cleanRating("Strong Buy \u2b50\u2b50\u2b50")).toBe("Strong buy");
+    expect(cleanRating(null)).toBeNull();
   });
 });
 

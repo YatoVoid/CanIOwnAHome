@@ -6,6 +6,7 @@ import { ExternalLink } from "lucide-react";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { Gallery } from "@/components/gallery";
 import { HomeDescription, HomeNav, ModelVerdict, PriceCheck } from "@/components/home-model";
+import { OfferAdvice } from "@/components/offer-advice";
 import { Section } from "@/components/section";
 import { cachedListing } from "@/lib/data";
 import { bathsLabel, count, money, photoAt } from "@/lib/format";
@@ -126,6 +127,8 @@ async function HomeDetail({
         )}
 
         <PriceCheck home={home} search={search} />
+
+        <OfferAdvice home={home} />
 
         {home.location && (
           <Section eyebrow="Location" title="Where it is">

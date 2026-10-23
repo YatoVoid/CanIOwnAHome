@@ -3,7 +3,7 @@ import { compactMoney } from "@/lib/format";
 import { matchesFilters, type Listing, type Search } from "@/lib/listing";
 import { rowById, rowToListing } from "@/lib/listings-store";
 import { mockRecommend } from "./mock";
-import type { PredictInput } from "./predict-input";
+import type { OfferInput, PredictInput } from "./predict-input";
 
 const TIMEOUT_MS = 15_000;
 const RETRIES = 1;
@@ -23,7 +23,7 @@ export function usingMockModel() {
   return !process.env.MODEL_API_URL;
 }
 
-function modelUrl(path: "/rent-to-own" | "/predict") {
+function modelUrl(path: "/rent-to-own" | "/predict" | "/deal-score" | "/offer-price") {
   return `${process.env.MODEL_API_URL!.replace(/\/+$/, "")}${path}`;
 }
 
@@ -140,6 +140,8 @@ export function toListing(r: RecommendResult): Listing {
       high: null,
       tier: r.tier ?? null,
       score: null,
+      dealScore: null,
+      dealRating: null,
       reasons: reason ? [reason] : [],
     },
   };
@@ -205,6 +207,150 @@ export async function getListing(id: string): Promise<Listing | null> {
   if (!row) return null;
   const home = rowToListing(row);
   return usingMockModel()
-    ? { ...home, model: { predictedPrice: home.estimates.value, low: null, high: null, tier: null, score: null, reasons: [] } }
+    ? {
+        ...home,
+        model: {
+          predictedPrice: home.estimates.value,
+          low: null,
+          high: null,
+          tier: null,
+          score: null,
+          dealScore: null,
+          dealRating: null,
+          reasons: [],
+        },
+      }
     : home;
+}
+
+const DealResultSchema = z.object({
+  address: z.string().min(1).max(300),
+  price: z.number().positive(),
+  predicted: optionalNumber,
+  value_gap_pct: optionalNumber,
+  days_on_zillow: optionalNumber,
+  deal_score: z.number().min(0).max(100),
+  rating: z.string().max(80).nullable().optional().catch(null),
+  beds: optionalNumber,
+  baths: optionalNumber,
+  sqft_living: optionalNumber,
+  zipcode: z.string().regex(/^\d{5}$/),
+  detail_url: z.string().nullable().optional().catch(null),
+});
+
+const DealResponseSchema = z.object({
+  area: z.string().max(200).nullable().optional(),
+  results: z.array(z.unknown()).max(1000).default([]),
+});
+
+/** "Strong Buy ⭐⭐⭐" becomes "Strong buy". */
+export function cleanRating(rating: string | null | undefined) {
+  const words = rating?.replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/\s+/g, " ");
+  return words ? words.charAt(0).toUpperCase() + words.slice(1).toLowerCase() : null;
+}
+
+function dealToListing(d: z.infer<typeof DealResultSchema>, id: string): Listing {
+  const row = rowById(id);
+  const base = row
+    ? rowToListing(row)
+    : fromResult({ id, address: d.address, zipcode: d.zipcode, price: d.price, beds: d.beds, baths: d.baths, sqft_living: d.sqft_living });
+  const gap = d.value_gap_pct;
+  const reasons = [
+    gap != null && d.predicted != null
+      ? gap >= 0
+        ? `Priced ${Math.round(gap)}% below the model's estimate of ${compactMoney(d.predicted)}`
+        : `Priced ${Math.round(-gap)}% above the model's estimate of ${compactMoney(d.predicted)}`
+      : null,
+    d.days_on_zillow != null ? `Listed for ${Math.round(d.days_on_zillow)} days` : null,
+  ].filter((r): r is string => r !== null);
+  return {
+    ...base,
+    price: d.price,
+    beds: base.beds ?? d.beds ?? null,
+    baths: base.baths ?? d.baths ?? null,
+    sqft: base.sqft ?? d.sqft_living ?? null,
+    daysOnMarket: base.daysOnMarket ?? (d.days_on_zillow != null ? Math.round(d.days_on_zillow) : null),
+    sourceUrl: https(d.detail_url) ?? base.sourceUrl,
+    model: {
+      predictedPrice: d.predicted ?? null,
+      low: null,
+      high: null,
+      tier: null,
+      score: null,
+      dealScore: d.deal_score,
+      dealRating: cleanRating(d.rating),
+      reasons,
+    },
+  };
+}
+
+export type DealScoreResult = RentToOwnResult;
+
+const DEAL_CANDIDATES = 40;
+
+/**
+ * Best deals in a zip by the model's deal score, at any price. The endpoint
+ * matches free text loosely ("all" returns the Galleria), so it is only ever
+ * sent a zip, and results are dropped unless it echoes that zip back.
+ */
+export async function dealScore(search: Search): Promise<DealScoreResult> {
+  if (usingMockModel()) return { upstream: null, model: null, homes: [] };
+
+  const upstream = modelUrl("/deal-score");
+  const body = await postJson(upstream, { area: search.zip, n_results: DEAL_CANDIDATES });
+  const parsed = DealResponseSchema.safeParse(body);
+  if (!parsed.success) {
+    console.error("deal-score API returned an invalid payload", parsed.error.issues.slice(0, 5));
+    throw new ModelError("Model API returned an invalid payload");
+  }
+  if (parsed.data.area !== `Zip ${search.zip}`) {
+    console.warn("deal-score answered for a different area", { asked: search.zip, got: parsed.data.area });
+    return { upstream, model: body, homes: [] };
+  }
+
+  const homes: Listing[] = [];
+  for (const item of parsed.data.results) {
+    const d = DealResultSchema.safeParse(item);
+    if (!d.success) continue;
+    const id = /\/(\d{1,20})_zpid/.exec(d.data.detail_url ?? "")?.[1];
+    if (!id) continue;
+    const home = dealToListing(d.data, id);
+    if (matchesFilters(home, search.filters)) homes.push(home);
+  }
+  return { upstream, model: body, homes };
+}
+
+const OfferSchema = z.object({ amount: z.number().positive(), reason: z.string().max(400) });
+
+export const OfferResponseSchema = z.object({
+  asking_price: z.number().positive(),
+  model_estimate: z.number().positive(),
+  confidence_range: z.string().max(100).nullable().optional(),
+  value_verdict: z.string().max(300).nullable().optional(),
+  gap_vs_model_pct: optionalNumber,
+  days_on_market: optionalNumber,
+  negotiation_room: z.string().max(20).nullable().optional(),
+  offers: z.object({ competitive: OfferSchema, fair: OfferSchema, negotiated: OfferSchema }),
+  reasoning: z
+    .object({ value: z.string().max(400).nullable().optional(), timing: z.string().max(400).nullable().optional() })
+    .nullable()
+    .optional(),
+});
+
+export type OfferResult = { upstream: string | null; offer: z.infer<typeof OfferResponseSchema> | null };
+
+export async function offerPrice(input: OfferInput): Promise<OfferResult> {
+  if (usingMockModel()) return { upstream: null, offer: null };
+  const upstream = modelUrl("/offer-price");
+  const body = await postJson(upstream, input);
+  const parsed = OfferResponseSchema.safeParse(body);
+  if (!parsed.success) {
+    console.error("offer-price API returned an invalid payload", parsed.error.issues.slice(0, 5));
+    throw new ModelError("Model API returned an invalid payload");
+  }
+  // The endpoint fills in defaults for missing fields, so make sure it priced the home we asked about.
+  if (parsed.data.asking_price !== input.asking_price) {
+    throw new ModelError("offer-price answered for a different asking price");
+  }
+  return { upstream, offer: parsed.data };
 }

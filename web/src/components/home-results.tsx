@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AssumptionControls } from "@/components/assumptions";
+import { BestDeals } from "@/components/best-deals";
 import { HomeGrid } from "@/components/home-grid";
 import { fetchRentToOwn } from "@/lib/api-client";
 import { money } from "@/lib/format";
@@ -75,6 +76,10 @@ export function HomeResults({ search, hasFilters, form }: { search: Search; hasF
               : "Try a slightly higher monthly amount or a nearby zip code. Coverage is limited to the Houston area for now."}
           </p>
         ))}
+
+      {state.status === "done" && (
+        <BestDeals search={search} />
+      )}
 
       {state.status === "done" && state.data.upstream === null && (
         <p className="text-sm text-ink-3">

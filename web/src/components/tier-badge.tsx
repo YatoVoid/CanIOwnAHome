@@ -15,3 +15,14 @@ export function TierBadge({ tier, className = "" }: { tier: Tier; className?: st
     </span>
   );
 }
+
+export function DealBadge({ score, rating, className = "" }: { score: number; rating: string | null; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded border border-accent/50 bg-card/95 px-2 py-0.5 text-xs font-semibold text-accent-ink ${className}`}
+    >
+      Deal score {Math.round(score)}
+      {rating && <span className="font-normal">· {rating}</span>}
+    </span>
+  );
+}

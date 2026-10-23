@@ -1,7 +1,7 @@
 import type { ChatMessage, ChatResult } from "@/lib/chat";
 import { searchQuery, type Listing, type Search } from "@/lib/listing";
-import type { PredictResult, RentToOwnResult } from "@/lib/model/client";
-import type { PredictInput } from "@/lib/model/predict-input";
+import type { DealScoreResult, OfferResult, PredictResult, RentToOwnResult } from "@/lib/model/client";
+import type { OfferInput, PredictInput } from "@/lib/model/predict-input";
 
 export class ApiError extends Error {}
 
@@ -48,6 +48,20 @@ export function fetchRentToOwn(search: Search) {
 export function fetchPredict(input: PredictInput) {
   const body = JSON.stringify(input);
   return once(`predict:${body}`, () => call<PredictResult>("/api/predict", { method: "POST", body }));
+}
+
+export function fetchDealScore(search: Search) {
+  return once(`deal-score:${searchQuery(search)}`, () =>
+    call<DealScoreResult>("/api/deal-score", {
+      method: "POST",
+      body: JSON.stringify({ zip: search.zip, monthly_rent: search.rent, filters: search.filters }),
+    }),
+  );
+}
+
+export function fetchOfferPrice(input: OfferInput) {
+  const body = JSON.stringify(input);
+  return once(`offer-price:${body}`, () => call<OfferResult>("/api/offer-price", { method: "POST", body }));
 }
 
 export function fetchDescription(id: string) {
